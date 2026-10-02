@@ -285,18 +285,39 @@ cylindre tourné de 90° ; le script redresse la PrimaryPart, donc tout le reste
 | Nom et place | un **Model** nommé exactement `Sorciere`, dans `ServerStorage/PNJ` (remplacer l'ancien) |
 | PrimaryPart | une Part nommée `Base` (le nom est conseillé, c'est la PrimaryPart qui compte), **à plat, non tournée**, posée sous ses pieds : **le bas de la Base = le sol**. Invisible (Transparency 1), CanCollide / CanTouch / CanQuery = false |
 | Devant | la sorcière regarde dans le sens de la **face avant (-Z, LookVector) de la Base** ; mettre le chaudron et la `Prompt` de ce côté |
-| ProximityPrompt | dans une Part nommée **`Prompt`** (n'importe où dans le modèle, même dans un sous-modèle), à côté du chaudron. La distance « assez près » (25 studs, `Reglages.Sorciere.DistanceMax`) est mesurée depuis cette Part |
-| Fumée | (optionnel) une Part nommée **`Chaudron`** : la fumée et le son en sortent |
+| ProximityPrompt | dans une Part nommée **`Prompt`** (n'importe où dans le modèle, même dans un sous-modèle), sur la sorcière (devant sa poitrine). La distance « assez près » (25 studs, `Reglages.Sorciere.DistanceMax`) est mesurée depuis cette Part. Aucune autre pièce ne doit s'appeler `Prompt` |
+| Fumée | (optionnel) une Part nommée **`Chaudron`** (invisible) : la fumée et le son sortent de **sa position**. Aucune autre pièce ne doit s'appeler `Chaudron` |
 | Ancrage | **toutes** les pièces Anchored = true (le script les ancre de toute façon à la copie) |
+| Collisions | une seule pièce de collision simple (`Collision`, boîte invisible, CanCollide = true) ; toutes les autres CanCollide = false ; toutes CanTouch et CanQuery = false |
 | Le reste | décoratif, libre (nombre de pièces, couleurs, maillages) |
+
+**Modèle actuel (2026-10-03)** : la sorcière importée par l'utilisateur
+(`assets/modeles/sorciere/witch-figurine.glb`, importée sous le nom `AuxScene`).
+- `ServerStorage/PNJ/Sorciere` = copie de l'import agrandie ×5,2 (≈ 6 studs de haut) :
+  sous-modèle `witch` (72 MeshParts : sorcière + sous-modèle `cauldron` à sa gauche, un peu
+  devant), plus 4 Parts invisibles ajoutées : `Base` (PrimaryPart, sous les pieds),
+  `Collision` (une boîte autour de la sorcière et du chaudron), `Prompt` (devant sa poitrine,
+  ProximityPrompt « Parler », touche E, 10 studs) et `Chaudron` (0,4 stud au-dessus de
+  `potion_surface`). Le nom « La sorcière » est un BillboardGui dans `Base`.
+- L'import avait perdu ses couleurs (tout gris) : elles ont été remises à la main d'après les
+  matériaux du fichier .glb (robe `#2B3040`, peau `#F0C4A6`, cheveux `#C79C66`, noir `#16171C`,
+  chaudron `#3C3D40`, potion `#6FE33A` et bulles `#9DFF6A` en Neon).
+- Sauvegardes dans Studio : l'ancien placeholder est dans `ServerStorage/PNJ_Anciens/Sorciere`
+  (le remettre dans `PNJ` pour revenir en arrière) ; l'import original intact est dans
+  `ServerStorage/Imports/AuxScene` (sorti du Workspace).
+- **Déplacer la fumée** (si le chaudron bouge) : déplacer la Part invisible
+  `ServerStorage/PNJ/Sorciere/Chaudron` au-dessus de la potion, dans Studio. Rien à changer
+  dans le code. L'aspect de la fumée (couleur, taille, vitesse) est dans `mettreEnScene` de
+  `src/server/Sorciere.luau` ; sa durée dans `Reglages.Sorciere.DureeMiseEnScene`.
 
 Placement fait par le script, dans chaque parcelle : position = `Reglages.Sorciere.Position`
 dans le repère de la parcelle (sur le dessus du `Sol`, bas de la Base posé dessus), puis
 rotation autour de la verticale seulement pour que le devant de la Base regarde la Part
 `Apparition` de la parcelle (fonctionne pour les parcelles tournées d'un demi-tour ; vérifié).
 `PivotOffset` de la Base remis à zéro à la copie : un pivot déplacé dans Studio ne gêne pas.
+
 - Règles (`Reglages.Sorciere`) : 3 bonbons de la même rareté (pas Mythique, pas raté), joueur
-  à ≤ 25 studs du chaudron, une transformation à la fois. Taux selon la rareté visée :
+  à ≤ 25 studs de la Part `Prompt`, une transformation à la fois. Taux selon la rareté visée :
   Peu commun 80 %, Rare 60 %, Épique 40 %, Légendaire 25 %, Mythique 10 %. Réussite : type
   tiré parmi les 3 donnés, découverte dans le carnet. Échec : « Bonbon raté » (pile
   `"Raté|Commun|Normal"`, prix fixe `ValeurRate` = 10 $, hors carnet). Pitié : après

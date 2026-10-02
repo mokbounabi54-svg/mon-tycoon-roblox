@@ -44,18 +44,39 @@ local function phraseAuHasard(liste)
 end
 
 -- La copie de la sorcière posée dans l'usine (dossier PNJ), d'après le modèle
--- ServerStorage/PNJ/Sorciere (créé dans Studio, facile à remplacer :
--- il lui faut seulement une Part "Prompt" et une Part "Chaudron").
+-- ServerStorage/PNJ/Sorciere (créé dans Studio, facile à remplacer). Ce que le
+-- script attend du modèle (voir aussi CLAUDE.md, « Remplacer le modèle de la sorcière ») :
+--   - PrimaryPart = une Part posée à plat sous ses pieds (la « Base ») : le bas de
+--     cette Part est le niveau du sol, et sa face avant (-Z) est la direction du regard ;
+--   - une Part "Prompt" contenant une ProximityPrompt ;
+--   - (optionnel) une Part "Chaudron" où sort la fumée.
+-- Toutes les pièces sont ancrées par le script, au cas où.
 local function poserSorciere(usine)
 	local dossierPNJ = ServerStorage:FindFirstChild("PNJ")
 	local modele = dossierPNJ and dossierPNJ:FindFirstChild("Sorciere")
-	if modele == nil then
-		warn("ServerStorage/PNJ/Sorciere introuvable : pas de sorcière dans les usines")
+	if modele == nil or modele.PrimaryPart == nil then
+		warn("ServerStorage/PNJ/Sorciere introuvable ou sans PrimaryPart : pas de sorcière dans les usines")
 		return nil
 	end
 	local copie = modele:Clone()
-	-- Tournée vers +X (vers l'entrée et la caisse), le chaudron devant elle
-	copie:PivotTo(usine.Sol.CFrame * CFrame.new(REGLAGES.Position + Vector3.new(0, usine.Sol.Size.Y / 2, 0)) * CFrame.Angles(0, -math.pi / 2, 0))
+	local base = copie.PrimaryPart
+	base.PivotOffset = CFrame.new() -- le repère est le centre de la Base, quelle que soit la retouche dans Studio
+	for _, piece in copie:GetDescendants() do
+		if piece:IsA("BasePart") then
+			piece.Anchored = true -- une sorcière ne doit ni tomber ni être poussée
+		end
+	end
+
+	-- Position : Reglages.Sorciere.Position (repère de la parcelle), le bas de la Base sur le sol
+	local hauteur = usine.Sol.Size.Y / 2 + base.Size.Y / 2
+	local position = (usine.Sol.CFrame * CFrame.new(REGLAGES.Position + Vector3.new(0, hauteur, 0))).Position
+	-- Orientation : debout, face au point d'entrée de la parcelle (la Part "Apparition"),
+	-- en ne tournant qu'autour de l'axe vertical
+	local apparition = usine:FindFirstChild("Apparition")
+	local regard = if apparition
+		then Vector3.new(apparition.Position.X, position.Y, apparition.Position.Z)
+		else position + usine.Sol.CFrame.LookVector -- sinon : vers le côté -Z (l'entrée) de la parcelle
+	copie:PivotTo(CFrame.lookAt(position, regard))
 	local dossier = Instance.new("Folder")
 	dossier.Name = "PNJ"
 	dossier.Parent = usine
