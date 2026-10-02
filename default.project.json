@@ -49,80 +49,74 @@
           ]
         }
       },
-      "Collecteur": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            1,
-            0.84705,
-            0.23529
-          ],
-          "Material": "Neon",
-          "Position": [
-            0,
-            0.5,
-            20
-          ],
-          "Size": [
-            6,
-            1,
-            6
-          ]
-        }
-      },
-      "Boutons": {
-        "$className": "Folder",
-        "MachineABonbons": {
+      "Parcelles": {
+        "$className": "Folder"
+      }
+    },
+
+    "ServerStorage": {
+      "ModeleUsine": {
+        "$className": "Model",
+        "Sol": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [
-              0.31372,
-              0.86274,
-              0.39215
-            ],
-            "Position": [
-              10,
-              0.25,
-              20
-            ],
-            "Size": [
-              4,
-              0.5,
-              4
-            ]
-          },
-          "$attributes": {
-            "Prix": 50
+            "Color": [0.96862, 0.80392, 0.86666],
+            "Material": "SmoothPlastic",
+            "Position": [0, 0.1, 0],
+            "Size": [60, 0.2, 60]
           }
-        }
-      },
-      "Achats": {
-        "$className": "Folder",
-        "MachineABonbons": {
+        },
+        "Apparition": {
           "$className": "Part",
           "$properties": {
             "Anchored": true,
-            "Color": [
-              1,
-              0.41176,
-              0.70588
-            ],
-            "Position": [
-              0,
-              10,
-              20
-            ],
-            "Size": [
-              4,
-              3,
-              4
-            ]
-          },
-          "$attributes": {
-            "ValeurBonbon": 10,
-            "Intervalle": 2
+            "CanCollide": false,
+            "CanTouch": false,
+            "Transparency": 1,
+            "Position": [0, 3, -20],
+            "Size": [2, 1, 2]
+          }
+        },
+        "Collecteur": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Color": [1, 0.84705, 0.23529],
+            "Material": "Neon",
+            "Position": [0, 0.7, 10],
+            "Size": [6, 1, 6]
+          }
+        },
+        "Boutons": {
+          "$className": "Folder",
+          "MachineABonbons": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Color": [0.31372, 0.86274, 0.39215],
+              "Position": [10, 0.45, 10],
+              "Size": [4, 0.5, 4]
+            },
+            "$attributes": {
+              "Prix": 50
+            }
+          }
+        },
+        "Achats": {
+          "$className": "Folder",
+          "MachineABonbons": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Color": [1, 0.41176, 0.70588],
+              "Position": [0, 10, 10],
+              "Size": [4, 3, 4]
+            },
+            "$attributes": {
+              "ValeurBonbon": 10,
+              "Intervalle": 2
+            }
           }
         }
       }

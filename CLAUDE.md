@@ -20,8 +20,10 @@ et l'utilise pour acheter de nouvelles machines grâce à des boutons posés au 
   synchronisés **vers** Roblox Studio. Ce qui est modifié directement dans Studio
   n'est pas recopié dans les fichiers : il faut le reporter à la main dans `src/`
   ou dans `default.project.json`.
-- `default.project.json` décrit les objets du Workspace (Baseplate, Collecteur,
-  dossiers `Boutons` et `Achats`) et leurs attributs.
+- `default.project.json` décrit les objets du jeu : la Baseplate, le dossier
+  `Workspace/Parcelles` (vide au départ) et le modèle d'usine `ServerStorage/ModeleUsine`.
+- Rojo ne crée pas toujours un **nouveau service** (ex : `ServerStorage`) pendant une
+  session déjà connectée : il faut alors reconnecter le plugin Rojo dans Studio.
 - `src/server/` → `ServerScriptService/Server` (scripts serveur)
 - `src/client/` → `StarterPlayer/StarterPlayerScripts/Client` (scripts client)
 - `src/shared/` → `ReplicatedStorage/Shared` (modules partagés)
@@ -31,22 +33,26 @@ et l'utilise pour acheter de nouvelles machines grâce à des boutons posés au 
 Déjà fait (scripts dans `src/server/`) :
 
 - `Leaderstats.server.luau` : crée la valeur `Argent` de chaque joueur (affichée en haut à droite).
-- `Collecteur.server.luau` : le collecteur accumule de l'argent tout seul et reçoit la
-  valeur des bonbons qui le touchent ; un joueur qui marche dessus récupère tout le stock.
-- `Boutons.server.luau` : boutons d'achat avec un attribut `Prix` ; l'objet acheté
-  apparaît et le bouton disparaît. Le bouton clignote en rouge si le joueur n'a pas assez d'argent.
-- `Machines.server.luau` : une fois achetée, une machine (attributs `ValeurBonbon`
-  et `Intervalle`) fait tomber des bonbons vers le collecteur.
+- `Parcelles.server.luau` : **une parcelle par joueur**. À l'arrivée d'un joueur, il copie
+  `ServerStorage/ModeleUsine` sur un emplacement libre (6 emplacements, liste `EMPLACEMENTS`),
+  la range dans `Workspace/Parcelles`, affiche « Usine de <nom> » et fait apparaître le
+  joueur sur la Part `Apparition`. Au départ du joueur, l'usine est détruite et l'emplacement libéré.
+- `Usine/` : des ModuleScripts appelés par `Parcelles` pour chaque usine :
+  - `Collecteur.luau` : accumule de l'argent tout seul et reçoit la valeur des bonbons ;
+    seul le propriétaire récupère le stock en marchant dessus.
+  - `Boutons.luau` : boutons d'achat (attribut `Prix`) ; seul le propriétaire peut acheter,
+    l'objet apparaît dans son usine et le bouton disparaît. Clignote en rouge si pas assez d'argent.
+  - `Machines.luau` : une machine achetée (attributs `ValeurBonbon`, `Intervalle`) fait
+    tomber des bonbons, rangés dans l'usine.
 
 Une seule machine existe pour l'instant (`MachineABonbons`).
-
-Limite actuelle : il n'y a qu'une seule usine, partagée par tous les joueurs
-(un seul collecteur, des achats communs).
+Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le modèle
+`ServerStorage/ModeleUsine` : les positions y sont relatives au centre de la parcelle (0, 0, 0).
 
 ## Conventions
 
 - **Un bouton et l'objet qu'il achète portent exactement le même nom.** Le bouton va
-  dans `Workspace/Boutons`, l'objet dans `Workspace/Achats`, déjà placé à sa position finale.
+  dans `ModeleUsine/Boutons`, l'objet dans `ModeleUsine/Achats`, déjà placé à sa position finale.
 - Un bouton doit avoir un attribut `Prix` (nombre).
 - Une machine doit avoir un attribut `ValeurBonbon` (nombre), et optionnellement
   `Intervalle` (secondes). Si c'est un Model, elle contient une Part nommée `Sortie`.
@@ -55,9 +61,8 @@ Limite actuelle : il n'y a qu'une seule usine, partagée par tous les joueurs
 
 ## Reste à faire
 
-1. **Parcelles par joueur** : chaque joueur reçoit sa propre usine (collecteur,
-   boutons, machines) à son arrivée, et la libère quand il part.
-2. **Sauvegarde DataStore** : sauvegarder l'argent et les achats de chaque joueur
-   pour les retrouver à la prochaine connexion.
-3. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
+1. **Sauvegarde DataStore** : sauvegarder l'argent et les achats de chaque joueur
+   pour les retrouver à la prochaine connexion (les achats sont les noms des objets
+   présents dans le dossier `Achats` de son usine).
+2. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
    d'argent, achat de monnaie).
