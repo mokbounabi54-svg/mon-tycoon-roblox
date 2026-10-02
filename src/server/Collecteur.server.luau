@@ -35,6 +35,16 @@ mettreAJourPanneau()
 
 -- Quand quelque chose touche le collecteur
 collecteur.Touched:Connect(function(objetQuiTouche)
+	-- Un bonbon tombé d'une machine : on ajoute sa valeur au stock et on le détruit
+	local valeurBonbon = objetQuiTouche:GetAttribute("Valeur")
+	if objetQuiTouche.Name == "Bonbon" and typeof(valeurBonbon) == "number" then
+		objetQuiTouche:SetAttribute("Valeur", nil) -- pour ne pas le compter deux fois
+		objetQuiTouche:Destroy()
+		stock += valeurBonbon
+		mettreAJourPanneau()
+		return
+	end
+
 	-- objetQuiTouche est une partie du corps (ex : un pied) ; son parent est le personnage
 	local joueur = Players:GetPlayerFromCharacter(objetQuiTouche.Parent)
 	if joueur == nil or stock == 0 then
