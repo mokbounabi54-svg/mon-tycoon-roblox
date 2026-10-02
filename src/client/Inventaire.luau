@@ -84,13 +84,14 @@ local EPAISSEUR_OMBRE_PANNEAU = 10
 local DELAI_MAX_ATTENTE = 1 -- s : si le serveur ne répond pas, on réactive les boutons
 local MARGE_HAUT_MIN = 58 -- px laissés en haut pour le menu Roblox (hauteur de sa barre)
 
--- Rang de chaque rareté (1 = Commun) et ses réglages, d'après Reglages
-local rangs, infosRarete = {}, {}
+-- Rang de chaque rareté (1 = Commun) et de chaque type (Fraise, Menthe, Or), d'après Reglages
+local rangs, ordreTypes = {}, {}
 for rang, infos in Reglages.Raretes do
 	rangs[infos.Nom] = rang
-	infosRarete[infos.Nom] = infos
 end
-local ordreTypes = { Fraise = 1, Menthe = 2, Or = 3 }
+for ordre, typeBonbon in Reglages.OrdreTypes do
+	ordreTypes[typeBonbon] = ordre
+end
 
 --------------------------------------------------------------------------------
 -- ICÔNES 3D (ViewportFrame) : le modèle « Moule » du type, aux couleurs de la rareté

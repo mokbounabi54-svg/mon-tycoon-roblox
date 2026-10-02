@@ -214,13 +214,13 @@ function Rarete.appliquer(bonbon, rang, proprietaire)
 		return
 	end
 	if infos.MessageProprietaire then
-		annonce:FireClient(proprietaire, infos.MessageProprietaire, couleur)
+		annonce:FireClient(proprietaire, infos.MessageProprietaire, couleur, "Legendaire") -- 4e valeur : le son à jouer
 	end
 	if infos.AnnonceServeur then
 		local texte = infos.AnnonceServeur:gsub("{joueur}", function()
 			return proprietaire.DisplayName
 		end)
-		annonce:FireAllClients(texte, couleur)
+		annonce:FireAllClients(texte, couleur, "Mythique")
 	end
 end
 

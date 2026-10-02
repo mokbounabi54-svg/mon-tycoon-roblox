@@ -76,7 +76,12 @@ achète de nouvelles machines grâce à des boutons posés au sol.
 - `shared/Reglages.luau` : **le** module de réglages (raretés, pitié, types et valeurs de
   départ, mutations, inventaire, réglages de test). Tous les chiffres d'équilibrage vont ici.
 - `client/init.client.luau` : démarre les modules d'interface rangés à côté de lui.
-  `client/Annonces.luau` : messages en haut de l'écran (4 s puis fondu, à 70 px du haut).
+  `client/Annonces.luau` : messages en haut de l'écran (4 s puis fondu, à 70 px du haut,
+  taille fixe 26 px / 18 px sur téléphone, 4 au maximum). 3e valeur optionnelle du canal
+  `Annonce` : nom d'un son de `Theme.Sons` (`Legendaire`, `Mythique`, `Nouveau`), joué doucement.
+  `client/Tutoriel.luau` : 4 bulles pendant les 2 premières minutes pour un nouveau joueur
+  (attribut `NouveauJoueur` posé par `Parcelles` : chargement réussi, 0 $ et aucun achat) ;
+  boutons « OK » et « Passer » ; textes, délais et `Actif` dans `Reglages.Tutoriel`.
   `client/Argent.luau` : compteur d'argent en haut au centre (lit `leaderstats.Argent`,
   le chiffre défile et la pastille grossit quand on gagne).
   `client/Theme.luau` : **le** style de toutes les interfaces (police FredokaOne, couleurs,
@@ -341,18 +346,18 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 
 ## Reste à faire
 
-Chantier en cours (branche `rarete-inventaire`), en 4 sous-étapes. Après chacune :
+Chantier en cours (branche `rarete-inventaire`, puis `nuit-auto` pour la mission autonome), en 4 sous-étapes. Après chacune :
 test, mise à jour de `CLAUDE.md` et `IDEES.md`, liste de vérifications pour l'utilisateur,
 puis **attendre son « commit »** avant la suivante.
 
 - [x] A. Rareté (ci-dessus).
 - [x] Modèles de bonbons : Fraise, Menthe et Or (Menthe et Or faits pendant « nuit-auto »,
   à valider visuellement par l'utilisateur).
-- [x] B. Inventaire (ci-dessus) — en attente du « commit » de l'utilisateur.
-- [ ] C. Carnet : combinaisons type + rareté découvertes, grille, compteur, « Nouveau ! ».
-- [ ] D. Sorcière : 3 bonbons de même rareté (types mélangés possibles, le résultat prend
-  le type de l'un des trois au hasard) → rareté supérieure ou « Bonbon raté » ; pitié après
-  5 échecs ; une transformation à la fois ; fumée, son, 3 s, phrases.
+- [x] B. Inventaire (ci-dessus).
+- [x] C. Carnet (ci-dessus), fait pendant « nuit-auto ».
+- [x] D. Sorcière (ci-dessus), faite pendant « nuit-auto ».
+- [x] Finitions « nuit-auto » : sons doux des messages, tutoriel, nettoyage. Voir `RAPPORT_NUIT.md`.
+  **Tout ce qui a été fait pendant « nuit-auto » attend la relecture de l'utilisateur.**
 
 Ensuite :
 1. **Équilibrage** : revoir les prix avec la rareté (voir plus haut).

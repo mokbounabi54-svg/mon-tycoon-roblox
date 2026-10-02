@@ -186,6 +186,22 @@ Reglages.Sorciere = {
 }
 
 --------------------------------------------------------------------------------
+-- TUTORIEL (bulles pour un nouveau joueur, pendant les 2 premières minutes)
+--------------------------------------------------------------------------------
+
+Reglages.Tutoriel = {
+	Actif = true, -- false = plus jamais de bulles
+	DureeBulle = 20, -- secondes avant qu'une bulle se ferme toute seule
+	-- Delai : secondes après l'arrivée du joueur
+	Bulles = {
+		{ Delai = 3, Texte = "Bienvenue ! Ton mélangeur fabrique des bonbons qui roulent jusqu'au point de vente." },
+		{ Delai = 30, Texte = "L'argent arrive dans la caisse jaune, près de l'entrée : marche dessus pour le ramasser." },
+		{ Delai = 60, Texte = "Marche sur les boutons verts pour acheter des machines : chacune rend tes bonbons plus précieux." },
+		{ Delai = 95, Texte = "Les bonbons rares vont dans ton Inventaire. Le Carnet garde ta collection, et la sorcière transforme 3 bonbons en un plus rare !" },
+	},
+}
+
+--------------------------------------------------------------------------------
 -- RÉGLAGES DE TEST (ne marchent QUE dans Studio, jamais dans le vrai jeu)
 --------------------------------------------------------------------------------
 

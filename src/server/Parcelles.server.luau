@@ -173,6 +173,8 @@ local function quandUnJoueurArrive(joueur)
 	local argent = joueur:WaitForChild("leaderstats"):WaitForChild("Argent")
 	argent.Value = donnees.Argent
 	joueur:SetAttribute("CompteurPitie", donnees.CompteurPitie) -- pitié de la rareté (module Rarete)
+	-- Nouveau joueur (ni argent ni machine) : l'écran lui montre le petit tutoriel
+	joueur:SetAttribute("NouveauJoueur", reussi and donnees.Argent == 0 and #donnees.Achats == 0)
 
 	local usine = modeleUsine:Clone()
 	usine.Name = "Usine de " .. joueur.Name

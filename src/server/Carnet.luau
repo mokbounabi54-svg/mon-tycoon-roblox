@@ -94,7 +94,7 @@ function Carnet.decouvrir(joueur, typeBonbon, nomRarete)
 		return false
 	end
 	decouverts[cle] = true
-	annonce:FireClient(joueur, "Nouveau dans le carnet : " .. typeBonbon .. " " .. nomRarete .. " !", Color3.fromHex("FF3EA5"))
+	annonce:FireClient(joueur, "Nouveau dans le carnet : " .. typeBonbon .. " " .. nomRarete .. " !", Color3.fromHex("FF3EA5"), "Nouveau")
 	envoyer(joueur, cle)
 	return true
 end

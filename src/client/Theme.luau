@@ -38,8 +38,13 @@ Theme.Arrondi = 30 -- coins des panneaux (px)
 Theme.ArrondiCarte = 24
 Theme.EpaisseurOmbre = 6 -- l'« ombre » épaisse sous les boutons (px)
 
+-- Sons courts et discrets (fournis avec Roblox, à remplacer par de vrais sons plus tard)
 Theme.Sons = {
 	Vente = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.3, Vitesse = 1.5 },
+	-- Joués avec les messages en haut de l'écran (le serveur dit lequel)
+	Legendaire = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.22, Vitesse = 1.25 },
+	Mythique = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.25, Vitesse = 0.85 },
+	Nouveau = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.15, Vitesse = 1.7 },
 }
 
 -- Une couleur un peu plus sombre (pour l'ombre d'un bouton)
