@@ -13,6 +13,14 @@ Des idées notées en route, pas encore décidées. Rien ici n'est promis : c'es
   `"Type|Rareté|Mutation"` est déjà prévue pour.
 - **Rééquilibrer les prix** : la rareté multiplie les revenus moyens par ≈ 2,3.
 
+## Notées pendant « nuit-auto »
+- Une vraie étoile pour l'Or (WedgeParts ou maillage), l'actuelle a 5 branches rectangulaires.
+- Un dessin de chapeau de sorcière (image) à la place de l'emoji 🧙 dans son écran.
+- Récompense quand une ligne ou une colonne du carnet est complète.
+- Un vrai son de chaudron qui bouillonne pour la sorcière.
+- Sauvegarder « tutoriel passé » si on veut le montrer aussi aux joueurs qui reviennent.
+- Supprimer les deux `Workspace.Script` « Hello world » et le module `Shared/Hello` (inutilisés).
+
 ## Inventaire, carnet, sorcière (chantier en cours)
 - Agrandir la capacité de l'inventaire (amélioration à acheter avec l'argent du jeu) :
   il suffira d'ajouter un bonus à `Reglages.Inventaire.Capacite` par joueur.
