@@ -41,6 +41,7 @@ local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local Rarete = require(script.Parent:WaitForChild("Rarete"))
 local Prix = require(script.Parent:WaitForChild("Prix"))
 local Inventaire = require(script.Parent.Parent:WaitForChild("Inventaire"))
+local Carnet = require(script.Parent.Parent:WaitForChild("Carnet"))
 
 -- Les modèles des bonbons (créés dans Studio, pas dans les fichiers)
 local dossierModeles = ServerStorage:FindFirstChild("ModelesBonbons")
@@ -173,6 +174,8 @@ local function creerBonbon(usine, dossierBonbons, sortie, valeur, typeBonbon)
 	-- Tirage de la rareté (sur le serveur) : elle multiplie la valeur et change l'apparence
 	local proprietaire = Players:GetPlayerByUserId(usine:GetAttribute("Proprietaire") or 0)
 	Rarete.appliquer(bonbon, Rarete.tirer(proprietaire), proprietaire)
+	-- Première fois que le joueur obtient ce type dans cette rareté ? (carnet de collection)
+	Carnet.decouvrir(proprietaire, typeBonbon, bonbon:GetAttribute("Rarete"))
 
 	lancerPhysique(bonbon)
 end

@@ -15,6 +15,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local Sauvegarde = require(script.Parent:WaitForChild("Sauvegarde"))
 local Inventaire = require(script.Parent:WaitForChild("Inventaire"))
+local Carnet = require(script.Parent:WaitForChild("Carnet"))
 local Usine = script.Parent:WaitForChild("Usine")
 local demarrerCaisse = require(Usine.Caisse)
 local demarrerBoutons = require(Usine.Boutons)
@@ -62,7 +63,8 @@ local function lireDonnees(joueur, usine)
 	local leaderstats = joueur:FindFirstChild("leaderstats")
 	local argent = leaderstats and leaderstats:FindFirstChild("Argent")
 	local inventaire = Inventaire.lire(joueur)
-	if argent == nil or inventaire == nil then
+	local carnet = Carnet.lire(joueur)
+	if argent == nil or inventaire == nil or carnet == nil then
 		return nil
 	end
 
@@ -77,6 +79,7 @@ local function lireDonnees(joueur, usine)
 		Inventaire = inventaire.Inventaire,
 		SeuilGarde = inventaire.SeuilGarde,
 		CompteurPitie = joueur:GetAttribute("CompteurPitie") or 0,
+		Carnet = carnet,
 	}
 end
 
@@ -153,7 +156,7 @@ local function quandUnJoueurArrive(joueur)
 		-- On le laisse jouer, mais sans jamais sauvegarder : sinon sa vraie
 		-- sauvegarde serait écrasée par cette partie recommencée à zéro.
 		warn("Impossible de charger la sauvegarde de " .. joueur.Name .. " : cette partie ne sera pas sauvegardée")
-		donnees = { Argent = 0, Achats = {}, Inventaire = {}, CompteurPitie = 0 }
+		donnees = { Argent = 0, Achats = {}, Inventaire = {}, CompteurPitie = 0, Carnet = {} }
 	end
 
 	local numero = trouverEmplacementLibre()
@@ -179,6 +182,7 @@ local function quandUnJoueurArrive(joueur)
 
 	ajouterPanneauProprietaire(usine, joueur)
 	Inventaire.demarrer(joueur, usine, donnees) -- avant la production : le point de vente s'en sert
+	Carnet.demarrer(joueur, donnees) -- avant la production : les mélangeurs s'en servent
 	demarrerCaisse(usine, joueur)
 	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
 	demarrerBoutons(usine, joueur, donnees.Achats)
@@ -204,6 +208,7 @@ local function quandUnJoueurPart(joueur)
 	usines[joueur] = nil
 	peutSauvegarder[joueur] = nil
 	Inventaire.arreter(joueur) -- après la sauvegarde, qui a lu l'inventaire
+	Carnet.arreter(joueur)
 
 	for numero, occupant in occupants do
 		if occupant == joueur then

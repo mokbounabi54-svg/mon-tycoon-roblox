@@ -121,6 +121,9 @@ Reglages.Types = {
 	},
 }
 
+-- Ordre d'affichage des types (lignes du carnet, tri de l'inventaire)
+Reglages.OrdreTypes = { "Fraise", "Menthe", "Or" }
+
 -- Mutations (à venir) : nom -> multiplicateur. "Normal" = pas de mutation.
 Reglages.Mutations = {
 	Normal = 1,

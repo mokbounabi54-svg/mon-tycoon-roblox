@@ -241,6 +241,24 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
   cartes visibles ont un bonbon 3D. `InterfaceInventaire.creer(conteneur, options)` permet
   de construire le panneau dans un cadre de test d'une taille d'écran simulée.
 
+## Carnet de collection
+
+- `server/Carnet.luau` : ensemble de clés `"Type|Rareté"` découvertes par joueur (3 types ×
+  6 raretés = 18, d'après `Reglages.OrdreTypes` et `Reglages.Raretes`). Découverte quand un
+  bonbon sort d'un mélangeur de l'usine du joueur (`Production.creerBonbon`) ou quand la
+  sorcière le fabrique ; message « Nouveau dans le carnet » (canal `Annonce`). Le « Bonbon
+  raté » n'y est pas. Canaux : `CarnetMaj` (serveur → écran : `{ Decouverts, Nombre, Total,
+  Nouveau? }`), `DemanderCarnet`.
+- Sauvegarde **version 4** : champ `Carnet = { ["Fraise|Rare"] = true }`. Migration 3 → 4 :
+  le carnet est rempli avec les combinaisons présentes dans l'inventaire (rien de perdu).
+- Écran `client/Carnet.luau` (maquette « Carnet de collection ») : grille types × raretés,
+  découverts en couleur (bordure = couleur de rareté), sinon silhouette grise + « ? » ; barre
+  de progression ; « N / 18 découverts » ; badge « Nouveau ! » jusqu'à la fermeture du carnet ;
+  bouton « Carnet » sous « Inventaire » (pastille rose s'il y a du nouveau) + touche C.
+  Ordinateur 1080 × 628, téléphone 700 × 336 ; mêmes règles d'échelle que l'inventaire.
+- `client/Icones.luau` : icônes 3D communes (caméra partagée, `Icones.creer`,
+  `Icones.remplir`, silhouette grise pour le carnet).
+
 ## Tester sans abîmer la vraie sauvegarde
 
 - `Reglages.Test.RareteForcee = "Mythique"` : tous les bonbons sortent de cette rareté

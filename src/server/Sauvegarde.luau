@@ -4,12 +4,13 @@
 -- les données même quand le serveur s'éteint. Chaque joueur a sa propre case,
 -- repérée par une "clé" construite avec son UserId.
 --
--- Une sauvegarde ressemble à ça (version 3) :
+-- Une sauvegarde ressemble à ça (version 4) :
 --   {
 --     Version = 3, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" },
 --     Inventaire = { ["Fraise|Rare|Normal"] = 4 },   -- les piles de bonbons gardés
 --     SeuilGarde = "Peu commun",                     -- garder à partir de cette rareté
 --     CompteurPitie = 37,                            -- bonbons de suite sous Épique
+--     Carnet = { ["Fraise|Rare"] = true },           -- version 4 : combinaisons découvertes
 --   }
 --
 -- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
@@ -30,7 +31,7 @@ local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
-local VERSION = 3
+local VERSION = 4
 
 -- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
 -- Elles n'existent plus : on rembourse leur prix au joueur.
@@ -129,6 +130,21 @@ function Sauvegarde.migrer(userId, donnees)
 		donnees.CompteurPitie = 0
 		print("Sauvegarde de " .. userId .. " convertie en version 3 (inventaire vide)")
 	end
+	if version < 4 then
+		-- Version 4 : carnet de collection. Pour ne rien perdre, on y met déjà les
+		-- combinaisons type + rareté présentes dans l'inventaire.
+		local carnet = {}
+		if typeof(donnees.Inventaire) == "table" then
+			for cle in donnees.Inventaire do
+				local morceaux = string.split(tostring(cle), "|")
+				if #morceaux == 3 then
+					carnet[morceaux[1] .. "|" .. morceaux[2]] = true
+				end
+			end
+		end
+		donnees.Carnet = carnet
+		print("Sauvegarde de " .. userId .. " convertie en version 4 (carnet de collection)")
+	end
 	donnees.Version = VERSION
 end
 
@@ -171,6 +187,10 @@ function Sauvegarde.charger(userId)
 	end
 	if typeof(donnees.CompteurPitie) ~= "number" or donnees.CompteurPitie < 0 then
 		donnees.CompteurPitie = 0
+	end
+	-- Version 4 (le détail des clés est vérifié par Carnet)
+	if typeof(donnees.Carnet) ~= "table" then
+		donnees.Carnet = {}
 	end
 	return true, donnees
 end

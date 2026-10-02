@@ -17,6 +17,7 @@ local TextService = game:GetService("TextService")
 local Players = game:GetService("Players")
 
 local Theme = require(script.Parent:WaitForChild("Theme"))
+local Icones = require(script.Parent:WaitForChild("Icones"))
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Reglages = require(Shared:WaitForChild("Reglages"))
 local Format = require(Shared:WaitForChild("Format"))
@@ -95,76 +96,10 @@ local ordreTypes = { Fraise = 1, Menthe = 2, Or = 3 }
 -- ICÔNES 3D (ViewportFrame) : le modèle « Moule » du type, aux couleurs de la rareté
 --------------------------------------------------------------------------------
 
--- Une seule caméra partagée par toutes les icônes : chaque icône a sa propre copie
--- du bonbon, posée au même endroit (l'origine), donc la même vue convient à toutes.
-local cameraIcones = Instance.new("Camera")
-cameraIcones.FieldOfView = 30
-cameraIcones.CFrame = CFrame.lookAt(Vector3.new(0, 1.9, -2.7), Vector3.new(0, -0.2, 0))
-
-local function copierBonbonPourIcone(typeBonbon, nomRarete)
-	local dossier = ReplicatedStorage:FindFirstChild("ModelesBonbons")
-	local dossierType = dossier and dossier:FindFirstChild(typeBonbon)
-	local source = dossierType and dossierType:FindFirstChild("Moule")
-
-	local modele
-	if source then
-		modele = source:Clone()
-	else
-		-- Pas encore de modèle pour ce type : une boule de sa couleur
-		modele = Instance.new("Model")
-		local boule = Instance.new("Part")
-		boule.Shape = Enum.PartType.Ball
-		boule.Size = Vector3.one
-		boule.Material = Enum.Material.SmoothPlastic
-		local infosType = Reglages.Types[typeBonbon]
-		boule.Color = infosType and infosType.Couleur or Color3.new(1, 1, 1)
-		boule:SetAttribute("Teinte", true)
-		boule.Parent = modele
-	end
-
-	-- Couleur et matière de la rareté sur les pièces Teinte, comme dans l'usine
-	local infos = infosRarete[nomRarete]
-	local matiere = infos and infos.Matiere and Enum.Material[infos.Matiere]
-	for _, piece in modele:GetDescendants() do
-		if piece:IsA("BasePart") and piece:GetAttribute("Teinte") then
-			if infos and infos.Couleur then
-				piece.Color = infos.Couleur
-			end
-			if matiere then
-				piece.Material = matiere
-			end
-		end
-	end
-	modele:PivotTo(CFrame.new())
-	return modele
-end
-
-local function creerIcone(parent, typeBonbon, nomRarete, taille, position)
-	local vue = Instance.new("ViewportFrame")
-	vue.Name = "Icone"
-	vue.BackgroundTransparency = 1
-	vue.Size = UDim2.fromOffset(taille, taille)
-	vue.Position = position
-	vue.CurrentCamera = cameraIcones
-	vue.Ambient = Color3.fromRGB(190, 180, 200)
-	vue.LightColor = Color3.new(1, 1, 1)
-	vue.LightDirection = Vector3.new(-0.5, -1, 0.6)
-	vue:SetAttribute("Type", typeBonbon)
-	vue:SetAttribute("Rarete", nomRarete)
-	vue.Parent = parent
-	return vue
-end
-
--- Met (ou retire) le bonbon dans une icône. On ne garde des bonbons 3D que dans
--- les icônes visibles, pour rester léger.
-local function remplirIcone(vue, visible)
-	local dejaRemplie = vue:FindFirstChildOfClass("Model") ~= nil
-	if visible and not dejaRemplie then
-		copierBonbonPourIcone(vue:GetAttribute("Type"), vue:GetAttribute("Rarete")).Parent = vue
-	elseif not visible and dejaRemplie then
-		vue:FindFirstChildOfClass("Model"):Destroy()
-	end
-end
+-- Les icônes 3D viennent du module commun Icones (aussi utilisé par le carnet et la sorcière)
+local cameraIcones = Icones.camera
+local creerIcone = Icones.creer
+local remplirIcone = Icones.remplir
 
 --------------------------------------------------------------------------------
 -- PETITES AIDES
