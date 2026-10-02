@@ -4,6 +4,7 @@
 --   Boutons : un dossier qui contient les boutons (des Parts). Chaque bouton a :
 --               - un attribut "Prix" (nombre) : obligatoire
 --               - un attribut "Titre" (texte) : le nom affiché sur le panneau (optionnel)
+--               - un attribut "Description" (texte) : 3e ligne du panneau, ex : "Valeur ×2" (optionnel)
 --               - un attribut "Requiert" (texte) : le nom de l'achat à faire avant.
 --                 Le bouton reste caché tant que cet achat n'est pas fait (optionnel)
 --   Achats  : un dossier qui contient les objets à acheter, déjà placés
@@ -16,24 +17,19 @@
 -- Les autres joueurs ne peuvent pas utiliser ses boutons.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Format = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Format"))
 
 local COULEUR_PAS_ASSEZ = Color3.fromRGB(255, 80, 80) -- clignotement si pas assez d'argent
 
--- Écrit un nombre avec des espaces entre les milliers : 250000 -> "250 000"
-local function formaterNombre(nombre)
-	local texte = tostring(math.floor(nombre))
-	return (texte:reverse():gsub("(%d%d%d)", "%1 "):reverse():gsub("^ ", ""))
-end
-
-local function ajouterPanneau(bouton, prix, objet)
+local function ajouterPanneau(bouton, prix)
 	local titre = bouton:GetAttribute("Titre") or bouton.Name
-	local lignes = titre .. "\n" .. formaterNombre(prix) .. " $"
+	local lignes = titre .. "\n" .. Format.nombre(prix) .. " $"
 
-	-- Pour une machine, on affiche aussi ce qu'elle rapporte par seconde
-	local valeur = objet:GetAttribute("ValeurBonbon")
-	local intervalle = objet:GetAttribute("Intervalle")
-	if typeof(valeur) == "number" and typeof(intervalle) == "number" and intervalle > 0 then
-		lignes ..= "\n+" .. formaterNombre(valeur / intervalle) .. " $/s"
+	local description = bouton:GetAttribute("Description")
+	if typeof(description) == "string" then
+		lignes ..= "\n" .. description
 	end
 
 	local panneau = Instance.new("BillboardGui")
@@ -74,7 +70,7 @@ return function(usine, proprietaire, achatsDejaFaits)
 
 	-- Le bouton fonctionne : panneau + achat quand le propriétaire marche dessus
 	local function activerBouton(bouton, prix, objet)
-		ajouterPanneau(bouton, prix, objet)
+		ajouterPanneau(bouton, prix)
 
 		local couleurNormale = bouton.Color
 		local achete = false

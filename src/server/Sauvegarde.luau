@@ -5,7 +5,10 @@
 -- repérée par une "clé" construite avec son UserId.
 --
 -- Une sauvegarde ressemble à ça :
---   { Argent = 120, Achats = { "MachineABonbons" } }
+--   { Version = 2, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" } }
+--
+-- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
+-- on augmente VERSION et on convertit les anciennes sauvegardes (voir migrer).
 --
 -- Parler au DataStore peut échouer (problème réseau, trop de demandes...).
 -- On utilise donc pcall pour attraper l'erreur au lieu de planter, et on
@@ -16,6 +19,23 @@ local DataStoreService = game:GetService("DataStoreService")
 local NOM_DATASTORE = "Joueurs_v1" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
+
+local VERSION = 2
+
+-- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
+-- Elles n'existent plus : on rembourse leur prix au joueur.
+local ANCIENNES_MACHINES = {
+	MachineABonbons = 50,
+	MachineASucettes = 150,
+	MachineAGuimauves = 400,
+	MachineACaramels = 1000,
+	MachineAChocolats = 2500,
+	MachineAReglisse = 6000,
+	MachineADragees = 15000,
+	MachineANougats = 40000,
+	MachineAMacarons = 100000,
+	MachineArcEnCiel = 250000,
+}
 
 local Sauvegarde = {}
 
@@ -50,6 +70,29 @@ local function essayerPlusieursFois(description, action)
 	return false, resultat
 end
 
+-- Convertit une sauvegarde d'une ancienne version au format actuel
+local function migrer(userId, donnees)
+	local version = if typeof(donnees.Version) == "number" then donnees.Version else 1
+	if version < 2 then
+		local achatsGardes = {}
+		local rembourse = 0
+		for _, nom in donnees.Achats do
+			local prix = ANCIENNES_MACHINES[nom]
+			if prix then
+				rembourse += prix
+			else
+				table.insert(achatsGardes, nom)
+			end
+		end
+		donnees.Achats = achatsGardes
+		donnees.Argent += rembourse
+		if rembourse > 0 then
+			print("Sauvegarde de " .. userId .. " convertie : " .. rembourse .. " $ remboursés pour les anciennes machines")
+		end
+	end
+	donnees.Version = VERSION
+end
+
 -- Charge la sauvegarde d'un joueur.
 -- Renvoie : réussi, puis les données ({ Argent, Achats }).
 -- Un nouveau joueur (pas encore de sauvegarde) reçoit des données vides : c'est une réussite.
@@ -77,6 +120,7 @@ function Sauvegarde.charger(userId)
 	if typeof(donnees.Achats) ~= "table" then
 		donnees.Achats = {}
 	end
+	migrer(userId, donnees)
 	return true, donnees
 end
 
@@ -86,6 +130,7 @@ function Sauvegarde.enregistrer(userId, donnees)
 		return false
 	end
 
+	donnees.Version = VERSION
 	local reussi = essayerPlusieursFois("Sauvegarde de " .. userId, function()
 		dataStore:SetAsync(cle(userId), donnees, { userId })
 	end)

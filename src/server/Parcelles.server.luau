@@ -2,7 +2,7 @@
 --
 -- Quand un joueur arrive, on charge sa sauvegarde (argent et machines achetées),
 -- puis on lui donne un emplacement libre et on y pose une copie du modèle d'usine
--- (ServerStorage/ModeleUsine) : son propre collecteur, ses propres boutons et ses
+-- (ServerStorage/ModeleUsine) : sa propre chaîne de production, sa caisse, ses boutons et ses
 -- propres achats. Le joueur apparaît dans son usine.
 --
 -- On sauvegarde :
@@ -15,26 +15,26 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local Sauvegarde = require(script.Parent:WaitForChild("Sauvegarde"))
 local Usine = script.Parent:WaitForChild("Usine")
-local demarrerCollecteur = require(Usine.Collecteur)
+local demarrerCaisse = require(Usine.Caisse)
 local demarrerBoutons = require(Usine.Boutons)
-local demarrerMachines = require(Usine.Machines)
+local demarrerProduction = require(Usine.Production)
 
 local modeleUsine = ServerStorage:WaitForChild("ModeleUsine")
 local dossierParcelles = workspace:WaitForChild("Parcelles")
 
 local INTERVALLE_SAUVEGARDE_AUTO = 120 -- secondes (2 minutes)
 
--- Les emplacements des parcelles sur la carte : 3 de chaque côté du point
+-- Les emplacements des parcelles (120 × 120) sur la carte : 3 de chaque côté du point
 -- d'apparition. Les parcelles du côté "nord" sont tournées d'un demi-tour
 -- pour que leur entrée regarde vers le centre.
 local DEMI_TOUR = CFrame.Angles(0, math.pi, 0)
 local EMPLACEMENTS = {
-	CFrame.new(-70, 0, 50),
-	CFrame.new(0, 0, 50),
-	CFrame.new(70, 0, 50),
-	CFrame.new(-70, 0, -50) * DEMI_TOUR,
-	CFrame.new(0, 0, -50) * DEMI_TOUR,
-	CFrame.new(70, 0, -50) * DEMI_TOUR,
+	CFrame.new(-130, 0, 80),
+	CFrame.new(0, 0, 80),
+	CFrame.new(130, 0, 80),
+	CFrame.new(-130, 0, -80) * DEMI_TOUR,
+	CFrame.new(0, 0, -80) * DEMI_TOUR,
+	CFrame.new(130, 0, -80) * DEMI_TOUR,
 }
 
 local occupants = {} -- occupants[numéro d'emplacement] = joueur
@@ -164,8 +164,8 @@ local function quandUnJoueurArrive(joueur)
 	peutSauvegarder[joueur] = reussi
 
 	ajouterPanneauProprietaire(usine, joueur)
-	demarrerCollecteur(usine, joueur)
-	demarrerMachines(usine)
+	demarrerCaisse(usine, joueur)
+	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
 	demarrerBoutons(usine, joueur, donnees.Achats)
 
 	joueur.CharacterAdded:Connect(function(personnage)

@@ -1,8 +1,10 @@
 # Tycoon d'usine à bonbons (Roblox)
 
-Jeu Roblox de type tycoon : le joueur construit une usine à bonbons. Des machines
-font tomber des bonbons sur un collecteur, le joueur ramasse l'argent du collecteur
-et l'utilise pour acheter de nouvelles machines grâce à des boutons posés au sol.
+Jeu Roblox de type tycoon : chaque joueur construit sa chaîne de production de bonbons.
+Un mélangeur crée de la pâte, des tapis roulants la transportent à travers un cuiseur,
+un mouleur et une emballeuse (la valeur augmente à chaque étape), puis un point de vente
+vend le bonbon et met l'argent dans la caisse. Le joueur ramasse l'argent de la caisse et
+achète de nouvelles machines grâce à des boutons posés au sol.
 
 ## L'utilisateur est débutant
 
@@ -18,73 +20,90 @@ et l'utilise pour acheter de nouvelles machines grâce à des boutons posés au 
 
 - Le projet utilise **Rojo** (installé via `rokit.toml`) : les fichiers de `src/` sont
   synchronisés **vers** Roblox Studio. Ce qui est modifié directement dans Studio
-  n'est pas recopié dans les fichiers : il faut le reporter à la main dans `src/`
-  ou dans `default.project.json`.
-- `default.project.json` décrit les objets du jeu : la Baseplate, le dossier
-  `Workspace/Parcelles` (vide au départ) et le modèle d'usine `ServerStorage/ModeleUsine`.
-- Rojo ne crée pas toujours un **nouveau service** (ex : `ServerStorage`) pendant une
-  session déjà connectée : il faut alors reconnecter le plugin Rojo dans Studio.
+  n'est pas recopié dans les fichiers.
 - `src/server/` → `ServerScriptService/Server` (scripts serveur)
 - `src/client/` → `StarterPlayer/StarterPlayerScripts/Client` (scripts client)
-- `src/shared/` → `ReplicatedStorage/Shared` (modules partagés)
+- `src/shared/` → `ReplicatedStorage/Shared` (modules partagés, ex : `Format.luau`)
+- `default.project.json` décrit la Baseplate et le dossier `Workspace/Parcelles`.
+- **Les modèles 3D vivent seulement dans Studio** (choix de l'utilisateur) :
+  `ServerStorage/ModeleUsine` n'est PAS dans `default.project.json` et Rojo n'y touche pas.
+  L'utilisateur les retouche lui-même dans Studio. Pour les modifier, passer par la
+  connexion Studio (MCP), jamais par le fichier projet. Git ne garde que les scripts.
 
-## État d'avancement
+## Architecture
 
-Déjà fait (scripts dans `src/server/`) :
+- `Leaderstats.server.luau` : crée la valeur `Argent` de chaque joueur.
+- `Parcelles.server.luau` : **une parcelle de 120 × 120 par joueur** (6 emplacements, liste
+  `EMPLACEMENTS`, espacés de 130). Charge la sauvegarde, copie `ModeleUsine` sur un emplacement
+  libre, démarre la caisse, la production et les boutons, fait apparaître le joueur sur
+  `Apparition`. Sauvegarde au départ, toutes les 2 minutes et à l'arrêt du serveur (`BindToClose`).
+- `Sauvegarde.luau` : DataStore `Joueurs_v1`, format `{ Version = 2, Argent, Achats }`,
+  3 essais en cas d'erreur. Si le chargement échoue, le joueur n'est jamais sauvegardé.
+  `migrer` convertit les sauvegardes version 1 : les 10 anciennes machines (MachineABonbons…)
+  sont remboursées à leur prix. Pour un futur changement de format : augmenter `VERSION`
+  et ajouter un cas dans `migrer`.
+- `Usine/Production.luau` : fait fonctionner chaque machine d'après son attribut `Role`
+  (voir plus bas). Groupes de collision : les bonbons ne touchent ni les autres bonbons ni les
+  joueurs. Physique des bonbons calculée par le serveur, 80 bonbons max par usine, 30 s de vie.
+- `Usine/Caisse.luau` : la Part `Caisse` garde l'argent en attente dans son attribut `Stock`
+  (rempli par les points de vente) ; seul le propriétaire le récupère en marchant dessus.
+  L'argent en attente n'est pas sauvegardé.
+- `Usine/Boutons.luau` : boutons d'achat ; seul le propriétaire peut acheter.
 
-- `Leaderstats.server.luau` : crée la valeur `Argent` de chaque joueur (affichée en haut à droite).
-- `Parcelles.server.luau` : **une parcelle par joueur**. À l'arrivée d'un joueur, il copie
-  `ServerStorage/ModeleUsine` sur un emplacement libre (6 emplacements, liste `EMPLACEMENTS`),
-  la range dans `Workspace/Parcelles`, affiche « Usine de <nom> » et fait apparaître le
-  joueur sur la Part `Apparition`. Au départ du joueur, l'usine est détruite et l'emplacement libéré.
-- `Usine/` : des ModuleScripts appelés par `Parcelles` pour chaque usine :
-  - `Collecteur.luau` : accumule de l'argent tout seul et reçoit la valeur des bonbons ;
-    seul le propriétaire récupère le stock en marchant dessus.
-  - `Boutons.luau` : boutons d'achat (attribut `Prix`) ; seul le propriétaire peut acheter,
-    l'objet apparaît dans son usine et le bouton disparaît. Clignote en rouge si pas assez d'argent.
-  - `Machines.luau` : une machine achetée (attributs `ValeurBonbon`, `Intervalle`) fait
-    tomber des bonbons, rangés dans l'usine.
+## Structure de `ServerStorage/ModeleUsine`
 
-- `Sauvegarde.luau` : lit et écrit la sauvegarde d'un joueur dans le DataStore `Joueurs_v1`
-  (`{ Argent, Achats }`, avec 3 essais en cas d'erreur). `Parcelles` charge la sauvegarde à
-  l'arrivée et sauvegarde au départ, toutes les 2 minutes et à l'arrêt du serveur (`BindToClose`).
-  Si le chargement échoue, le joueur joue quand même mais n'est jamais sauvegardé, pour ne
-  pas écraser sa vraie sauvegarde. L'argent en attente dans le collecteur n'est pas sauvegardé.
-  Pour tester dans Studio, il faut activer « Activer l'accès de Studio aux services API ».
+Positions relatives au centre de la parcelle ; l'entrée est du côté -Z (`Apparition` en
+(0, 3, -55), tournée vers +Z), la `Caisse` en (0, 0.7, -45).
 
-Progression : 10 machines au-dessus d'un grand collecteur (40 × 12), en 2 rangées de 5.
-Chaque bouton a un attribut `Requiert` (la machine précédente) : un seul bouton est visible à la fois.
+- `Machines/` : machines présentes dès le départ (gratuites).
+- `Achats/` : machines à acheter, déjà à leur place ; cachées puis posées à l'achat.
+- `Boutons/` : un bouton par achat, **avec exactement le même nom**.
 
-| Machine | Prix | ValeurBonbon | Intervalle | Gain |
+Zone 1 (ligne en X = -40, les bonbons vont de +Z vers -Z, tapis à vitesse 8) :
+
+| Objet | Où | Prix | Effet | Revenu total après |
 |---|---|---|---|---|
-| MachineABonbons | 50 | 10 | 2 | 5 $/s |
-| MachineASucettes | 150 | 20 | 2 | 10 $/s |
-| MachineAGuimauves | 400 | 30 | 1.5 | 20 $/s |
-| MachineACaramels | 1 000 | 60 | 1.5 | 40 $/s |
-| MachineAChocolats | 2 500 | 100 | 1.25 | 80 $/s |
-| MachineAReglisse | 6 000 | 160 | 1 | 160 $/s |
-| MachineADragees | 15 000 | 300 | 1 | 300 $/s |
-| MachineANougats | 40 000 | 600 | 1 | 600 $/s |
-| MachineAMacarons | 100 000 | 1 200 | 1 | 1 200 $/s |
-| MachineArcEnCiel | 250 000 | 2 400 | 1 | 2 400 $/s |
+| Melangeur1A | Machines | gratuit | pâte de 4 $ toutes les 2 s | 2 $/s |
+| Tapis1A → Tapis1D | Machines | gratuit | transport | |
+| PointDeVente1 | Machines | gratuit | vend dans la caisse | |
+| Cuiseur1 | Achats | 60 | valeur ×2 | 4 $/s |
+| Mouleur1 | Achats | 250 | valeur ×2, forme cube | 8 $/s |
+| Emballeuse1 | Achats | 1 000 | valeur ×2,5, matière Foil | 20 $/s |
+| Melangeur1B | Achats | 3 500 | 2e mélangeur | 40 $/s |
 
-Rojo ne synchronise pas `ServerStorage` dans la session actuelle : toute modification de
-`ModeleUsine` doit être faite **à la fois** dans `default.project.json` et dans Studio.
-Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le modèle
-`ServerStorage/ModeleUsine` : les positions y sont relatives au centre de la parcelle (0, 0, 0).
+Prévu ensuite (plan validé) : zone 2 (X = 0) débloquée pour 10 000 $ et zone 3 (X = 40)
+pour 900 000 $, chacune avec mélangeur, cuiseur, mouleur, emballeuse, 2e mélangeur et une
+barrière qui disparaît à l'achat. Prix visés : Cuiseur2 25 000, Mouleur2 60 000,
+Emballeuse2 150 000, Melangeur2B 400 000, Zone3 900 000, Cuiseur3 2 M, Mouleur3 4,5 M,
+Emballeuse3 10 M, Melangeur3B 25 M. Revenus de base : zone 2 = 40 $/s, zone 3 = 800 $/s
+(×20 avec toute la chaîne). Durée totale visée ≈ 1 h 35.
 
 ## Conventions
 
-- **Un bouton et l'objet qu'il achète portent exactement le même nom.** Le bouton va
-  dans `ModeleUsine/Boutons`, l'objet dans `ModeleUsine/Achats`, déjà placé à sa position finale.
-- Un bouton doit avoir un attribut `Prix` (nombre). Optionnels : `Titre` (texte affiché sur
-  le panneau) et `Requiert` (nom de l'achat à faire avant que le bouton apparaisse).
-- Une machine doit avoir un attribut `ValeurBonbon` (nombre), et optionnellement
-  `Intervalle` (secondes). Si c'est un Model, elle contient une Part nommée `Sortie`.
-- Les bonbons sont des Parts nommées `Bonbon` avec un attribut `Valeur`.
+- **Un bouton et l'objet qu'il achète portent exactement le même nom** (c'est aussi le nom
+  enregistré dans la sauvegarde : ne pas renommer un achat existant).
+- Bouton : attribut `Prix` (obligatoire), `Titre`, `Description` (3e ligne du panneau),
+  `Requiert` (nom de l'achat à faire avant que le bouton apparaisse).
+- **Une machine est un Model ; les scripts ne lisent que ses attributs et quelques pièces
+  au nom précis. Tout le reste est décoratif et peut être remplacé librement** :
+
+  | Role | Attributs | Pièce indispensable |
+  |---|---|---|
+  | `Melangeur` | `ValeurDepart`, `Intervalle` | `Sortie` (la pâte apparaît juste dessous) |
+  | `Tapis` | `Vitesse` | `Surface` (avance dans le sens de sa face avant) |
+  | `Transformation` | `Etape`, `Multiplicateur`, `CouleurBonbon`, `FormeBonbon` (Boule/Cube/Cylindre), `MatiereBonbon` | `Zone` (boîte invisible, CanTouch) |
+  | `PointDeVente` | — | `Zone` |
+
+- Un bonbon est une Part nommée `Bonbon` avec un attribut `Valeur`, rangée dans le dossier
+  `Bonbons` de l'usine. Il reçoit un attribut `true` par étape franchie (ex : `Cuisson`) :
+  chaque étape ne s'applique qu'une fois.
+- Les bonbons en boule roulent sur le tapis et avancent donc un peu moins vite que `Vitesse`.
 - Toute la logique de jeu (argent, achats) se fait côté serveur, jamais côté client.
+- Tester dans Studio utilise la **vraie** sauvegarde de l'utilisateur : la remettre dans
+  son état d'origine après un test.
 
 ## Reste à faire
 
-1. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
+1. **Zones 2 et 3** (voir le plan plus haut), quand l'utilisateur aura testé la zone 1.
+2. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
    d'argent, achat de monnaie).
