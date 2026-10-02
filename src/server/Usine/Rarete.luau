@@ -148,39 +148,66 @@ local function ajouterLumiere(bonbon, couleur, portee)
 	local lumiere = Instance.new("PointLight")
 	lumiere.Color = couleur
 	lumiere.Range = portee
-	lumiere.Brightness = 2
+	lumiere.Brightness = Reglages.LuminositeLumiere
 	lumiere.Parent = bonbon
 end
 
--- Couleur et matière de la rareté. Appelé à la création du bonbon ; les machines
--- ne changent ensuite que ce que la rareté laisse libre (voir Production).
+-- Un bonbon est soit un modèle (ServerStorage/ModelesBonbons), soit une simple
+-- boule (ancien rendu). Pour un modèle, les effets vont sur sa pièce "Corps"...
+local function corpsDe(bonbon)
+	return if bonbon:IsA("Model") then bonbon.PrimaryPart else bonbon
+end
+
+-- ... et la couleur de rareté seulement sur les pièces qui ont l'attribut Teinte
+-- (le bonbon lui-même ; le papier, les reflets et les pépins gardent leur couleur).
+local function piecesTeintees(bonbon)
+	if not bonbon:IsA("Model") then
+		return { bonbon }
+	end
+	local pieces = {}
+	for _, piece in bonbon:GetDescendants() do
+		if piece:IsA("BasePart") and piece:GetAttribute("Teinte") == true then
+			table.insert(pieces, piece)
+		end
+	end
+	return pieces
+end
+
+-- Apparence de la rareté : couleur et matière (pièces Teinte), particules et
+-- lumière (Corps). Appelé à la création du bonbon, puis à chaque changement de
+-- modèle (voir Production). Les machines ne changent que ce que la rareté laisse libre.
 function Rarete.habiller(bonbon)
 	local infos = Rarete.infos(bonbon:GetAttribute("Rarete"))
-	if infos.Couleur then
-		bonbon.Color = infos.Couleur
+	for _, piece in piecesTeintees(bonbon) do
+		if infos.Couleur then
+			piece.Color = infos.Couleur
+		end
+		if infos.MatiereEnum then
+			piece.Material = infos.MatiereEnum
+		end
 	end
-	if infos.MatiereEnum then
-		bonbon.Material = infos.MatiereEnum
+
+	local corps = corpsDe(bonbon)
+	local couleur = infos.Couleur or corps.Color
+	if infos.Particules then
+		ajouterParticules(corps, couleur)
+	end
+	if infos.Lumiere then
+		ajouterLumiere(corps, couleur, infos.Lumiere)
 	end
 end
 
 -- Donne la rareté "rang" à un bonbon déjà posé dans l'usine de "proprietaire" :
--- valeur, apparence, effets et messages.
+-- valeur, apparence, son et messages.
 function Rarete.appliquer(bonbon, rang, proprietaire)
 	local infos = RARETES[rang]
 	bonbon:SetAttribute("Rarete", infos.Nom)
 	bonbon:SetAttribute("Valeur", bonbon:GetAttribute("Valeur") * infos.Multiplicateur)
 	Rarete.habiller(bonbon)
 
-	local couleur = infos.Couleur or bonbon.Color
-	if infos.Particules then
-		ajouterParticules(bonbon, couleur)
-	end
-	if infos.Lumiere then
-		ajouterLumiere(bonbon, couleur, infos.Lumiere)
-	end
+	local couleur = infos.Couleur or Color3.new(1, 1, 1)
 	if infos.Son then
-		jouerSon(bonbon, infos.Son)
+		jouerSon(corpsDe(bonbon), infos.Son)
 	end
 
 	if proprietaire == nil then

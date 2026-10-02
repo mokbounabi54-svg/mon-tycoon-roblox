@@ -6,7 +6,8 @@
 --
 --   Role = "Melangeur"      crée des bonbons (de la pâte) à intervalle régulier ;
 --                           chaque bonbon tire sa rareté à ce moment-là (voir Rarete)
---     attributs : ValeurDepart (nombre), Intervalle (secondes)
+--     attributs : ValeurDepart (nombre), Intervalle (secondes),
+--                 TypeBonbon (ex : "Fraise" ; le bonbon copie le modèle <Type>/Pate)
 --     pièce     : "Sortie" = l'endroit où la pâte apparaît (juste au-dessus du tapis)
 --
 --   Role = "Tapis"          fait avancer les bonbons posés dessus
@@ -15,7 +16,8 @@
 --
 --   Role = "Transformation" cuiseur, mouleur, emballeuse...
 --     attributs : Etape (texte, ex : "Cuisson"), Multiplicateur (nombre),
---                 et pour l'apparence (optionnels) : CouleurBonbon (couleur),
+--                 EtapeBonbon (ex : "Cuit" : le bonbon-modèle prend le modèle <Type>/Cuit),
+--                 et pour l'ancien rendu (optionnels) : CouleurBonbon (couleur),
 --                 FormeBonbon ("Boule", "Cube" ou "Cylindre"), MatiereBonbon (ex : "Foil")
 --     pièce     : "Zone" = une boîte invisible ; chaque bonbon qui la traverse est
 --                 transformé UNE seule fois par étape
@@ -30,8 +32,12 @@
 local Debris = game:GetService("Debris")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Rarete = require(script.Parent:WaitForChild("Rarete"))
+
+-- Les modèles des bonbons (créés dans Studio, pas dans les fichiers)
+local dossierModeles = ServerStorage:FindFirstChild("ModelesBonbons")
 
 local MAX_BONBONS_PAR_USINE = 80 -- au-delà, les mélangeurs attendent (pour ne pas faire ramer le jeu)
 local DUREE_DE_VIE_BONBON = 30 -- un bonbon tombé du tapis disparaît au bout de ce temps
@@ -85,11 +91,60 @@ local function trouverPiece(machine, nom)
 	return piece
 end
 
-local function estUnBonbonDe(usine, piece)
-	return piece.Name == "Bonbon" and typeof(piece:GetAttribute("Valeur")) == "number" and piece:IsDescendantOf(usine)
+-- Le modèle de bonbon d'un type et d'une étape (ex : "Fraise", "Cuit"), rangé dans
+-- ServerStorage/ModelesBonbons/<Type>/<Etape>. Renvoie nil s'il n'existe pas :
+-- le bonbon garde alors l'ancien rendu (une simple boule).
+local function trouverModele(typeBonbon, etape)
+	if dossierModeles == nil or typeof(typeBonbon) ~= "string" or typeof(etape) ~= "string" then
+		return nil
+	end
+	local dossierType = dossierModeles:FindFirstChild(typeBonbon)
+	local modele = dossierType and dossierType:FindFirstChild(etape)
+	if modele == nil or not modele:IsA("Model") or modele.PrimaryPart == nil then
+		return nil
+	end
+	return modele
 end
 
-local function creerBonbon(usine, dossierBonbons, sortie, valeur)
+-- Retrouve le bonbon à partir de la pièce qui touche une zone de machine.
+-- Pour un bonbon-modèle, seule sa pièce "Corps" peut toucher : le bonbon est son parent.
+-- Renvoie nil si ce n'est pas un bonbon de cette usine.
+local function trouverBonbon(usine, piece)
+	local bonbon = piece
+	if piece.Name == "Corps" and piece.Parent and piece.Parent:IsA("Model") then
+		bonbon = piece.Parent
+	end
+	if bonbon.Name == "Bonbon" and typeof(bonbon:GetAttribute("Valeur")) == "number" and bonbon:IsDescendantOf(usine) then
+		return bonbon
+	end
+	return nil
+end
+
+-- Copie un modèle de bonbon et le place à "position", tourné comme la parcelle
+-- (pour que le cœur et la papillote soient toujours dans le bon sens).
+-- Le bonbon n'est pas encore rangé dans l'usine : c'est à l'appelant de le faire.
+local function copierModele(usine, modele, position)
+	local bonbon = modele:Clone()
+	bonbon.Name = "Bonbon"
+	for _, piece in bonbon:GetDescendants() do
+		if piece:IsA("BasePart") then
+			piece.CollisionGroup = "Bonbons"
+		end
+	end
+	bonbon:PivotTo(CFrame.new(position) * usine.Sol.CFrame.Rotation)
+	return bonbon
+end
+
+-- C'est le serveur qui calcule la physique du bonbon (pas l'ordinateur du joueur) :
+-- plus fluide pour tout le monde, et impossible de tricher en le déplaçant.
+local function lancerPhysique(bonbon)
+	local corps = if bonbon:IsA("Model") then bonbon.PrimaryPart else bonbon
+	corps:SetNetworkOwner(nil)
+	Debris:AddItem(bonbon, DUREE_DE_VIE_BONBON)
+end
+
+-- L'ancien rendu : une boule rose, que les machines déforment et recolorent
+local function creerBouleDePate(position)
 	local bonbon = Instance.new("Part")
 	bonbon.Name = "Bonbon"
 	bonbon.Shape = Enum.PartType.Ball
@@ -97,7 +152,14 @@ local function creerBonbon(usine, dossierBonbons, sortie, valeur)
 	bonbon.Material = Enum.Material.SmoothPlastic
 	bonbon.Color = COULEUR_PATE
 	bonbon.CollisionGroup = "Bonbons"
-	bonbon.Position = sortie.Position - Vector3.new(0, sortie.Size.Y / 2 + 0.6, 0)
+	bonbon.Position = position
+	return bonbon
+end
+
+local function creerBonbon(usine, dossierBonbons, sortie, valeur, typeBonbon)
+	local position = sortie.Position - Vector3.new(0, sortie.Size.Y / 2 + 0.6, 0)
+	local modele = trouverModele(typeBonbon, "Pate")
+	local bonbon = if modele then copierModele(usine, modele, position) else creerBouleDePate(position)
 	bonbon:SetAttribute("Valeur", valeur)
 	bonbon.Parent = dossierBonbons
 
@@ -105,10 +167,25 @@ local function creerBonbon(usine, dossierBonbons, sortie, valeur)
 	local proprietaire = Players:GetPlayerByUserId(usine:GetAttribute("Proprietaire") or 0)
 	Rarete.appliquer(bonbon, Rarete.tirer(proprietaire), proprietaire)
 
-	-- C'est le serveur qui calcule la physique du bonbon (pas l'ordinateur du joueur) :
-	-- plus fluide pour tout le monde, et impossible de tricher en le déplaçant.
-	bonbon:SetNetworkOwner(nil)
-	Debris:AddItem(bonbon, DUREE_DE_VIE_BONBON)
+	lancerPhysique(bonbon)
+end
+
+-- Remplace un bonbon-modèle par le modèle de l'étape suivante, au même endroit et à
+-- la même vitesse. Le nouveau garde tout ce que l'ancien avait : valeur, rareté,
+-- étapes déjà franchies...
+local function changerDeModele(usine, ancien, modele)
+	local ancienCorps = ancien.PrimaryPart
+	local nouveau = copierModele(usine, modele, ancienCorps.Position)
+	for nom, valeur in ancien:GetAttributes() do
+		if nom ~= "Type" and nom ~= "Etape" then -- ceux-là viennent du nouveau modèle
+			nouveau:SetAttribute(nom, valeur)
+		end
+	end
+	Rarete.habiller(nouveau) -- couleur, matière, effets de la rareté (sans rejouer le son)
+	nouveau.Parent = ancien.Parent
+	nouveau.PrimaryPart.AssemblyLinearVelocity = ancienCorps.AssemblyLinearVelocity
+	ancien:Destroy()
+	lancerPhysique(nouveau)
 end
 
 local function demarrerMelangeur(usine, dossierBonbons, machine)
@@ -118,13 +195,14 @@ local function demarrerMelangeur(usine, dossierBonbons, machine)
 	end
 	local valeur = machine:GetAttribute("ValeurDepart") or 1
 	local intervalle = machine:GetAttribute("Intervalle") or 2
+	local typeBonbon = machine:GetAttribute("TypeBonbon") -- ex : "Fraise" (nil = ancien rendu)
 
 	-- task.spawn lance la boucle à côté, sans bloquer le reste du script.
 	-- Elle s'arrête quand la machine est détruite (avec l'usine).
 	task.spawn(function()
 		while machine.Parent ~= nil do
 			if #dossierBonbons:GetChildren() < MAX_BONBONS_PAR_USINE then
-				creerBonbon(usine, dossierBonbons, sortie, valeur)
+				creerBonbon(usine, dossierBonbons, sortie, valeur, typeBonbon)
 			end
 			task.wait(intervalle)
 		end
@@ -164,24 +242,36 @@ local function demarrerTransformation(usine, machine)
 		end
 	end
 
+	local etapeBonbon = machine:GetAttribute("EtapeBonbon") -- modèle à prendre (ex : "Cuit")
+
 	zone.Touched:Connect(function(piece)
-		if not estUnBonbonDe(usine, piece) or piece:GetAttribute(etape) then
+		local bonbon = trouverBonbon(usine, piece)
+		if bonbon == nil or bonbon:GetAttribute(etape) then
 			return -- pas un bonbon de cette usine, ou déjà passé par cette étape
 		end
-		piece:SetAttribute(etape, true)
-		piece:SetAttribute("Valeur", piece:GetAttribute("Valeur") * multiplicateur)
+		bonbon:SetAttribute(etape, true)
+		bonbon:SetAttribute("Valeur", bonbon:GetAttribute("Valeur") * multiplicateur)
 
-		-- La couleur et la matière d'une rareté passent avant celles de la machine :
-		-- seul un bonbon Commun prend les couleurs de la chaîne.
-		local rarete = Rarete.infos(piece:GetAttribute("Rarete"))
+		if bonbon:IsA("Model") then
+			-- Bonbon-modèle : il prend le modèle de cette étape (s'il existe)
+			local modele = trouverModele(bonbon:GetAttribute("Type"), etapeBonbon)
+			if modele then
+				changerDeModele(usine, bonbon, modele)
+			end
+			return
+		end
+
+		-- Ancien rendu. La couleur et la matière d'une rareté passent avant celles
+		-- de la machine : seul un bonbon Commun prend les couleurs de la chaîne.
+		local rarete = Rarete.infos(bonbon:GetAttribute("Rarete"))
 		if typeof(couleur) == "Color3" and rarete.Couleur == nil then
-			piece.Color = couleur
+			bonbon.Color = couleur
 		end
 		if forme then
-			piece.Shape = forme
+			bonbon.Shape = forme
 		end
 		if matiere and rarete.Matiere == nil then
-			piece.Material = matiere
+			bonbon.Material = matiere
 		end
 	end)
 end
@@ -194,12 +284,13 @@ local function demarrerPointDeVente(usine, machine)
 	end
 
 	zone.Touched:Connect(function(piece)
-		if not estUnBonbonDe(usine, piece) then
+		local bonbon = trouverBonbon(usine, piece)
+		if bonbon == nil then
 			return
 		end
-		local valeur = math.floor(piece:GetAttribute("Valeur") + 0.5) -- arrondi au $ près
-		piece:SetAttribute("Valeur", nil) -- pour ne pas le vendre deux fois
-		piece:Destroy()
+		local valeur = math.floor(bonbon:GetAttribute("Valeur") + 0.5) -- arrondi au $ près
+		bonbon:SetAttribute("Valeur", nil) -- pour ne pas le vendre deux fois
+		bonbon:Destroy()
 		caisse:SetAttribute("Stock", (caisse:GetAttribute("Stock") or 0) + valeur)
 	end)
 end

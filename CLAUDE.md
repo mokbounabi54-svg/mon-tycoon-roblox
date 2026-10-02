@@ -29,6 +29,9 @@ achète de nouvelles machines grâce à des boutons posés au sol.
   `ServerStorage/ModeleUsine` n'est PAS dans `default.project.json` et Rojo n'y touche pas.
   L'utilisateur les retouche lui-même dans Studio. Pour les modifier, passer par la
   connexion Studio (MCP), jamais par le fichier projet. Git ne garde que les scripts.
+- Pareil pour **`ServerStorage/ModelesBonbons`** (les modèles des bonbons) : créés par la
+  connexion Studio, ils n'existent que dans Studio (ni dans `default.project.json`, ni dans Git).
+- Les maquettes de l'utilisateur sont dans `docs/design/` (types et étapes, raretés, Halloween).
 
 ## Architecture
 
@@ -117,6 +120,39 @@ en moyenne ×2,32 (pitié non comptée) : tous les revenus du tableau sont à mu
 et la durée tombe à ≈ 50 min. L'inventaire (sous-étape B) changera encore ce calcul, car les
 bonbons gardés ne sont plus vendus automatiquement. Prix pas encore revus.
 
+## Modèles des bonbons (`ServerStorage/ModelesBonbons`)
+
+Un dossier par type, un Model par étape : `ModelesBonbons/<Type>/<Etape>`, avec
+Type = `Fraise`, `Menthe`, `Or` et Etape = `Pate`, `Cuit`, `Moule`, `Emballe`.
+**Seule la Fraise est faite** (zone 1) ; Menthe et Or attendent le feu vert de l'utilisateur.
+Tant qu'un modèle manque, le bonbon garde l'**ancien rendu** (boule que les machines
+déforment avec `CouleurBonbon`, `FormeBonbon`, `MatiereBonbon`) : c'est le cas des zones 2 et 3.
+
+- Le mélangeur choisit le type (attribut `TypeBonbon`, ex : `"Fraise"` sur `Melangeur1A`
+  et `Melangeur1B`) et copie `<Type>/Pate`. Chaque cuiseur, mouleur et emballeuse a un
+  attribut `EtapeBonbon` (`Cuit`, `Moule`, `Emballe`) : le bonbon est **remplacé** par le
+  modèle de cette étape, au même endroit et à la même vitesse, et garde tous ses attributs
+  (`Valeur`, `Rarete`, étapes franchies...).
+- Le bonbon en jeu est le Model renommé `Bonbon` ; ses attributs sont sur le Model. Seul son
+  `Corps` touche les zones des machines (`trouverBonbon` dans `Production` remonte au Model).
+
+**Règles d'un modèle de bonbon** (les scripts ne lisent que ça, le reste est libre) :
+
+| Quoi | Règle |
+|---|---|
+| Model | attributs `Type` et `Etape`, **PrimaryPart = `Corps`** |
+| `Corps` | la **seule** pièce CanCollide (et CanTouch), taille 1 × 1 × 1 = taille historique des bonbons (ne pas changer, sinon la physique des tapis change). Ball pour Pate et Cuit (visible), Block invisible pour Moule et Emballe (comme l'ancien cube, pour que le cœur et la papillote ne roulent pas) |
+| Autres pièces | CanCollide, CanTouch, CanQuery = false ; Massless = true ; soudées au Corps par un `WeldConstraint` ; **pas ancrées** |
+| `Teinte = true` | sur les pièces qui prennent la couleur (et le Neon) de la rareté ; les détails (papier, reflets, pépins) n'en ont pas |
+| Limites | 6 pièces maximum Corps compris ; pas de Highlight, lumière ni particules dans le modèle (la rareté les ajoute) |
+| Sens | construit avec l'entrée de la parcelle vers -Z : le modèle est tourné comme la parcelle |
+
+Couleurs de la Fraise : corps `#F0476B`, reflets `#FF9DB2`, papier `#FFE3EA`, pépins `#FFE9A8`.
+Pate : boule + petit bout de pâte + reflet. Cuit : boule en Plastic (Reflectance 0,1) + reflet.
+Moule : cœur à plat (2 disques + un carré tourné de 45°, épaisseur 0,45) + 2 pépins.
+Emballe : cylindre couché (1,1 × 0,7) + 2 bouts de papier inclinés à 30° + 2 anneaux.
+Testé : 80 bonbons Fraise à l'écran, 60 FPS côté serveur et côté écran, aucun bonbon tombé ni bloqué.
+
 ## Rareté des bonbons
 
 Tirée **sur le serveur** à la sortie du mélangeur (`Rarete.tirer`), enregistrée dans
@@ -133,7 +169,10 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 | Mythique | 0,05 % | 500 | rose, Neon, particules, son, lumière, annonce à tout le serveur |
 
 - À partir de Peu commun, la couleur (et la matière si la rareté en a une) de la rareté
-  passent avant celles des machines ; les machines changent toujours la forme.
+  s'appliquent aux pièces `Teinte` du modèle (ancien rendu : passent avant celles des
+  machines). Particules et lumière (portée 8, luminosité `Reglages.LuminositeLumiere` = 1)
+  vont sur le `Corps` ; `Rarete.habiller` les remet à chaque changement de modèle,
+  le son et les messages ne sont joués qu'une fois (`Rarete.appliquer`).
 - Pas de `Highlight` (Roblox en affiche 31 au maximum à la fois).
 - **Pitié** : attribut `CompteurPitie` du joueur = nombre de bonbons de suite sous Épique.
   À 150, le suivant est Épique. Pas encore sauvegardé (prévu en version 3, sous-étape B).
@@ -173,7 +212,7 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
   | `Transformation` | `Etape`, `Multiplicateur`, `CouleurBonbon`, `FormeBonbon` (Boule/Cube/Cylindre), `MatiereBonbon` | `Zone` (boîte invisible, CanTouch) |
   | `PointDeVente` | — | `Zone` |
 
-- Un bonbon est une Part nommée `Bonbon` avec les attributs `Valeur` et `Rarete`, rangée dans le dossier
+- Un bonbon est un Model (ou, ancien rendu, une Part) nommé `Bonbon` avec les attributs `Valeur` et `Rarete`, rangé dans le dossier
   `Bonbons` de l'usine. Il reçoit un attribut `true` par étape franchie (ex : `Cuisson`) :
   chaque étape ne s'applique qu'une fois.
 - Les bonbons en boule roulent sur le tapis et avancent donc un peu moins vite que `Vitesse`.
@@ -191,6 +230,8 @@ test, mise à jour de `CLAUDE.md` et `IDEES.md`, liste de vérifications pour l'
 puis **attendre son « commit »** avant la suivante.
 
 - [x] A. Rareté (ci-dessus).
+- [ ] Modèles de bonbons : Fraise faite ; **Menthe et Or : attendre le feu vert**
+  (puis `TypeBonbon` = `Menthe` / `Or` sur les mélangeurs des zones 2 et 3).
 - [ ] B. Inventaire : seuil de garde (défaut Peu commun), piles `"Type|Rareté|Mutation"`,
   capacité 50, plein → vendu dans la caisse avec message, interface Vendre / Tout vendre,
   sauvegarde version 3 (+ `CompteurPitie`) avec migration depuis la version 2.

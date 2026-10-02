@@ -15,9 +15,9 @@ local Reglages = {}
 --   Nom            : nom affiché, et nom enregistré dans l'attribut "Rarete" du bonbon
 --   Chance         : en % ; Commun n'en a pas, il prend « le reste » (100 - les autres)
 --   Multiplicateur : la valeur du bonbon est multipliée par ce nombre
---   Couleur        : remplace la couleur donnée par les machines (nil = garder
---                    les couleurs de la chaîne, comme avant)
---   Matiere        : remplace la matière donnée par les machines (nil = garder)
+--   Couleur        : couleur des pièces "Teinte" du bonbon (ancien rendu : remplace
+--                    celle des machines). nil = garder la couleur du modèle
+--   Matiere        : matière des pièces "Teinte" (nil = garder celle du modèle)
 --   Particules     : des étincelles autour du bonbon
 --   Son            : joué quand le bonbon apparaît (nil = pas de son)
 --   Lumiere        : le bonbon éclaire autour de lui (portée en studs, nil = pas de lumière)
@@ -71,10 +71,13 @@ Reglages.Raretes = {
 		Matiere = "Neon",
 		Particules = true,
 		Son = "rbxasset://sounds/electronicpingshort.wav",
-		Lumiere = 14,
+		Lumiere = 8,
 		AnnonceServeur = "🌟 {joueur} a obtenu un bonbon MYTHIQUE ! (valeur ×500)",
 	},
 }
+
+-- Luminosité (Brightness) de la lumière des raretés qui en ont une
+Reglages.LuminositeLumiere = 1
 
 -- Pitié : si les "Nombre" derniers bonbons d'un joueur étaient tous en dessous
 -- de "Rarete", le suivant est garanti de cette rareté.
