@@ -4,13 +4,14 @@
 -- les données même quand le serveur s'éteint. Chaque joueur a sa propre case,
 -- repérée par une "clé" construite avec son UserId.
 --
--- Une sauvegarde ressemble à ça (version 4) :
+-- Une sauvegarde ressemble à ça (version 5) :
 --   {
 --     Version = 3, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" },
 --     Inventaire = { ["Fraise|Rare|Normal"] = 4 },   -- les piles de bonbons gardés
 --     SeuilGarde = "Peu commun",                     -- garder à partir de cette rareté
 --     CompteurPitie = 37,                            -- bonbons de suite sous Épique
 --     Carnet = { ["Fraise|Rare"] = true },           -- version 4 : combinaisons découvertes
+--     PitieSorciere = { ["Rare"] = 2 },              -- version 5 : échecs de suite par palier
 --   }
 --
 -- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
@@ -31,7 +32,7 @@ local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
-local VERSION = 4
+local VERSION = 5
 
 -- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
 -- Elles n'existent plus : on rembourse leur prix au joueur.
@@ -145,6 +146,11 @@ function Sauvegarde.migrer(userId, donnees)
 		donnees.Carnet = carnet
 		print("Sauvegarde de " .. userId .. " convertie en version 4 (carnet de collection)")
 	end
+	if version < 5 then
+		-- Version 5 : compteurs de pitié de la sorcière (aucun échec au départ)
+		donnees.PitieSorciere = {}
+		print("Sauvegarde de " .. userId .. " convertie en version 5 (sorcière)")
+	end
 	donnees.Version = VERSION
 end
 
@@ -191,6 +197,10 @@ function Sauvegarde.charger(userId)
 	-- Version 4 (le détail des clés est vérifié par Carnet)
 	if typeof(donnees.Carnet) ~= "table" then
 		donnees.Carnet = {}
+	end
+	-- Version 5 (le détail est vérifié par Sorciere)
+	if typeof(donnees.PitieSorciere) ~= "table" then
+		donnees.PitieSorciere = {}
 	end
 	return true, donnees
 end

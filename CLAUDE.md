@@ -259,6 +259,34 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 - `client/Icones.luau` : icônes 3D communes (caméra partagée, `Icones.creer`,
   `Icones.remplir`, silhouette grise pour le carnet).
 
+## La sorcière
+
+- `server/Sorciere.luau` : pose une copie de `ServerStorage/PNJ/Sorciere` (modèle de formes
+  simples créé dans Studio, **seulement** dans Studio) dans chaque usine (dossier `PNJ`), à
+  `Reglages.Sorciere.Position` (-15, 0, -52), tournée vers +X. Le modèle doit seulement avoir
+  une Part `Prompt` (avec une `ProximityPrompt`) et une Part `Chaudron` (fumée) ; le reste est
+  décoratif. Seul le propriétaire peut lui parler (`SorciereOuvrir` → écran).
+- Règles (`Reglages.Sorciere`) : 3 bonbons de la même rareté (pas Mythique, pas raté), joueur
+  à ≤ 25 studs du chaudron, une transformation à la fois. Taux selon la rareté visée :
+  Peu commun 80 %, Rare 60 %, Épique 40 %, Légendaire 25 %, Mythique 10 %. Réussite : type
+  tiré parmi les 3 donnés, découverte dans le carnet. Échec : « Bonbon raté » (pile
+  `"Raté|Commun|Normal"`, prix fixe `ValeurRate` = 10 $, hors carnet). Pitié : après
+  `EchecsAvantGarantie` = 5 échecs de suite **au même palier** (rareté donnée), réussite
+  garantie ; compteurs sauvegardés.
+- **Retrait, tirage et ajout se font d'un seul bloc, sans attente** ; seule la révélation
+  attend `DureeMiseEnScene` = 3 s (fumée + son sur le chaudron). Ainsi, si le joueur part
+  pendant la fumée, sa sauvegarde est déjà juste. Totaux vérifiés avant / après.
+- Canaux : `SorciereOuvrir` (serveur → écran : `{ Pitie }`), `SorciereMuter(cles)` (écran →
+  serveur : 3 clés de piles), `SorciereResultat` (serveur → écran : `{ Accepte, Message?,
+  Reussi, Garanti, Type, Rarete, Phrase, Pitie }`).
+- Sauvegarde **version 5** : `PitieSorciere = { ["Rare"] = 2 }`. Migration 4 → 5 : `{}`.
+- `Inventaire` (serveur) a pour elle : `lireCle`, `quantite`, `total`, `retirer`, `ajouter`
+  (sans limite de capacité : on retire 3 avant d'en rendre 1). `Prix` : prix fixe du raté.
+- Écran `client/Sorciere.luau` (maquettes « Sorcière ») : bulle de paroles, 3 emplacements
+  (clic = fenêtre de choix des piles de même rareté ; clic sur un emplacement rempli = le
+  vider), chaudron animé, case résultat, palier + taux + barre, ligne de pitié, « Muter ».
+  Ordinateur 1080 × 628, téléphone 700 × 334.
+
 ## Tester sans abîmer la vraie sauvegarde
 
 - `Reglages.Test.RareteForcee = "Mythique"` : tous les bonbons sortent de cette rareté

@@ -17,6 +17,11 @@ local Prix = {}
 -- Renvoie le prix (nombre entier de $) d'un bonbon pour l'usine "usine",
 -- ou nil si le type, la rareté ou la mutation est inconnu.
 function Prix.calculer(usine, typeBonbon, nomRarete, mutation)
+	-- Le « Bonbon raté » de la sorcière a un prix fixe (Reglages.Sorciere.ValeurRate)
+	if typeBonbon == Reglages.Sorciere.TypeRate then
+		return Reglages.Sorciere.ValeurRate
+	end
+
 	local infosType = Reglages.Types[typeBonbon]
 	local multiplicateurMutation = Reglages.Mutations[mutation or "Normal"]
 	if infosType == nil or Rarete.rang(nomRarete) == nil or multiplicateurMutation == nil then

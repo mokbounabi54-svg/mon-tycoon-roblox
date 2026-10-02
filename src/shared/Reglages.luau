@@ -142,6 +142,50 @@ Reglages.Inventaire = {
 }
 
 --------------------------------------------------------------------------------
+-- LA SORCIÈRE
+--------------------------------------------------------------------------------
+
+-- Le joueur donne 3 bonbons de la même rareté : réussite = 1 bonbon de la rareté
+-- au-dessus (type tiré parmi les 3), échec = 1 « Bonbon raté ».
+Reglages.Sorciere = {
+	-- Chance de réussite (en %) selon la rareté VISÉE (celle qu'on veut obtenir)
+	Taux = {
+		["Peu commun"] = 80, -- 3 Commun -> 1 Peu commun
+		["Rare"] = 60,
+		["Épique"] = 40,
+		["Légendaire"] = 25,
+		["Mythique"] = 10, -- 3 Légendaire -> 1 Mythique (un Mythique ne s'améliore pas)
+	},
+	EchecsAvantGarantie = 5, -- après 5 échecs de suite au même palier, la réussite suivante est garantie
+	DureeMiseEnScene = 3, -- secondes de fumée avant le résultat
+	DistanceMax = 25, -- studs : il faut être près de la sorcière pour lui parler
+	-- Le « Bonbon raté » : un type à part, hors carnet, à valeur fixe
+	TypeRate = "Raté",
+	ValeurRate = 10, -- $ à la vente
+	-- Où elle se tient, par rapport au centre de la parcelle (près de l'entrée)
+	Position = Vector3.new(-15, 0, -52),
+	Son = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.25, Vitesse = 0.55 },
+	Phrases = {
+		Accueil = "Donne-moi trois bonbons de même rareté, et je vois ce que je peux faire…",
+		AccueilCourt = "Trois bonbons de même rareté, et je vois ce que je peux faire…",
+		Reussite = {
+			"Abracadabonbon ! Regarde-moi cette merveille.",
+			"Hé hé hé… Mon chaudron est de bonne humeur aujourd'hui.",
+			"Et voilà le travail ! Ne dis à personne que c'était facile.",
+			"Une pincée de sucre, un soupçon de magie… parfait !",
+			"Mon chat n'aurait pas fait mieux. Enfin, si, mais il dort.",
+		},
+		Echec = {
+			"Oups. Ça arrive même aux meilleures sorcières.",
+			"Hmm… j'ai dû confondre le sucre et le sel.",
+			"Ce bonbon est… raté. Mais il a bon cœur.",
+			"Le chaudron a éternué. Ce n'est pas ma faute !",
+			"Pas cette fois ! Reviens me voir, la chance tourne.",
+		},
+	},
+}
+
+--------------------------------------------------------------------------------
 -- RÉGLAGES DE TEST (ne marchent QUE dans Studio, jamais dans le vrai jeu)
 --------------------------------------------------------------------------------
 

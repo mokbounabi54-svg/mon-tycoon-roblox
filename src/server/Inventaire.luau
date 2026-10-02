@@ -54,7 +54,9 @@ local function lireCle(cle)
 	end
 	local morceaux = string.split(cle, "|")
 	local typeBonbon, nomRarete, mutation = morceaux[1], morceaux[2], morceaux[3]
-	if #morceaux ~= 3 or Reglages.Types[typeBonbon] == nil or Rarete.rang(nomRarete) == nil or Reglages.Mutations[mutation] == nil then
+	-- Un type connu, ou le « Bonbon raté » de la sorcière
+	local typeConnu = Reglages.Types[typeBonbon] ~= nil or typeBonbon == Reglages.Sorciere.TypeRate
+	if #morceaux ~= 3 or not typeConnu or Rarete.rang(nomRarete) == nil or Reglages.Mutations[mutation] == nil then
 		return nil
 	end
 	return typeBonbon, nomRarete, mutation
@@ -178,6 +180,49 @@ function Inventaire.essayerDeGarder(joueur, typeBonbon, nomRarete, mutation)
 		return false
 	end
 
+	etat.piles[cle] = (etat.piles[cle] or 0) + 1
+	envoyer(joueur)
+	return true
+end
+
+--------------------------------------------------------------------------------
+-- Pour la sorcière (module Sorciere) : lire, retirer et ajouter des bonbons
+--------------------------------------------------------------------------------
+
+Inventaire.lireCle = lireCle
+
+-- Nombre de bonbons d'une pile (0 si le joueur n'en a pas)
+function Inventaire.quantite(joueur, cle)
+	local etat = etats[joueur]
+	return etat and etat.piles[cle] or 0
+end
+
+-- Nombre total de bonbons du joueur (nil s'il n'a pas d'inventaire)
+function Inventaire.total(joueur)
+	local etat = etats[joueur]
+	return etat and compterBonbons(etat.piles)
+end
+
+-- Retire "quantite" bonbons d'une pile. Renvoie false (sans rien retirer) s'il n'y en a pas assez.
+function Inventaire.retirer(joueur, cle, quantite)
+	local etat = etats[joueur]
+	local possedes = etat and etat.piles[cle] or 0
+	if etat == nil or not estUnEntierPositif(quantite) or quantite > possedes then
+		return false
+	end
+	local reste = possedes - quantite
+	etat.piles[cle] = if reste > 0 then reste else nil
+	envoyer(joueur)
+	return true
+end
+
+-- Ajoute 1 bonbon, sans regarder la capacité : la sorcière en retire toujours 3
+-- avant d'en rendre 1, donc il y a forcément la place. Renvoie true si c'est fait.
+function Inventaire.ajouter(joueur, cle)
+	local etat = etats[joueur]
+	if etat == nil or lireCle(cle) == nil then
+		return false
+	end
 	etat.piles[cle] = (etat.piles[cle] or 0) + 1
 	envoyer(joueur)
 	return true
