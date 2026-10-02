@@ -24,6 +24,7 @@
 --
 -- Les machines du dossier "Machines" de l'usine marchent dès le départ ;
 -- celles du dossier "Achats" démarrent quand elles sont achetées.
+-- Un Model sans Role est un groupe : chaque machine qu'il contient démarre.
 
 local Debris = game:GetService("Debris")
 local PhysicsService = game:GetService("PhysicsService")
@@ -199,7 +200,8 @@ return function(usine)
 	dossierBonbons.Name = "Bonbons"
 	dossierBonbons.Parent = usine
 
-	local function demarrerMachine(machine)
+	local demarrerMachine -- déclarée avant pour pouvoir s'appeler elle-même (groupes de machines)
+	function demarrerMachine(machine)
 		local role = machine:GetAttribute("Role")
 		if role == "Melangeur" then
 			demarrerMelangeur(usine, dossierBonbons, machine)
@@ -211,6 +213,13 @@ return function(usine)
 			demarrerPointDeVente(usine, machine)
 		elseif role ~= nil then
 			warn("Role '" .. tostring(role) .. "' inconnu sur la machine '" .. machine.Name .. "'")
+		elseif machine:IsA("Model") or machine:IsA("Folder") then
+			-- Pas de Role : c'est un groupe de machines (ex : l'achat "Zone2", qui
+			-- contient le mélangeur, les tapis et le point de vente de la zone 2).
+			-- On démarre chaque machine qu'il contient.
+			for _, enfant in machine:GetChildren() do
+				demarrerMachine(enfant)
+			end
 		end
 	end
 

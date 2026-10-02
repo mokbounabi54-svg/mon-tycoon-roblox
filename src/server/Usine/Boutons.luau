@@ -10,6 +10,9 @@
 --   Achats  : un dossier qui contient les objets à acheter, déjà placés
 --             à leur position finale. Chaque objet porte EXACTEMENT
 --             le même nom que son bouton.
+--   Barrieres : (optionnel) des murs qui bloquent une zone pas encore achetée.
+--               Une barrière porte le même nom que l'achat qui la fait disparaître
+--               (ex : la barrière "Zone2" disparaît quand on achète "Zone2").
 --
 -- Quand l'usine est créée, les objets à acheter sont cachés. Quand le
 -- propriétaire marche sur un bouton et a assez d'argent, on lui retire le prix,
@@ -68,6 +71,16 @@ return function(usine, proprietaire, achatsDejaFaits)
 		return dossierAchats:FindFirstChild(nom) ~= nil
 	end
 
+	-- Pose l'objet acheté dans l'usine et retire la barrière du même nom, s'il y en a une
+	local function poserAchat(objet)
+		objet.Parent = dossierAchats
+		local dossierBarrieres = usine:FindFirstChild("Barrieres")
+		local barriere = dossierBarrieres and dossierBarrieres:FindFirstChild(objet.Name)
+		if barriere then
+			barriere:Destroy()
+		end
+	end
+
 	-- Le bouton fonctionne : panneau + achat quand le propriétaire marche dessus
 	local function activerBouton(bouton, prix, objet)
 		ajouterPanneau(bouton, prix)
@@ -104,7 +117,7 @@ return function(usine, proprietaire, achatsDejaFaits)
 
 			achete = true
 			argent.Value -= prix
-			objet.Parent = dossierAchats
+			poserAchat(objet)
 			bouton:Destroy()
 		end)
 	end
@@ -131,7 +144,7 @@ return function(usine, proprietaire, achatsDejaFaits)
 
 		if table.find(achatsDejaFaits, bouton.Name) then
 			-- Déjà acheté lors d'une partie précédente : on pose l'objet directement
-			objet.Parent = dossierAchats
+			poserAchat(objet)
 			bouton:Destroy()
 		else
 			table.insert(boutonsRestants, { bouton = bouton, prix = prix, objet = objet })

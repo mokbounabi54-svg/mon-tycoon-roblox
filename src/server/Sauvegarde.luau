@@ -16,7 +16,7 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 
-local NOM_DATASTORE = "Joueurs_v1" -- changer ce nom repart de sauvegardes vides
+local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
