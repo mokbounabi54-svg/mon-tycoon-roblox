@@ -45,6 +45,13 @@ Déjà fait (scripts dans `src/server/`) :
   - `Machines.luau` : une machine achetée (attributs `ValeurBonbon`, `Intervalle`) fait
     tomber des bonbons, rangés dans l'usine.
 
+- `Sauvegarde.luau` : lit et écrit la sauvegarde d'un joueur dans le DataStore `Joueurs_v1`
+  (`{ Argent, Achats }`, avec 3 essais en cas d'erreur). `Parcelles` charge la sauvegarde à
+  l'arrivée et sauvegarde au départ, toutes les 2 minutes et à l'arrêt du serveur (`BindToClose`).
+  Si le chargement échoue, le joueur joue quand même mais n'est jamais sauvegardé, pour ne
+  pas écraser sa vraie sauvegarde. L'argent en attente dans le collecteur n'est pas sauvegardé.
+  Pour tester dans Studio, il faut activer « Activer l'accès de Studio aux services API ».
+
 Une seule machine existe pour l'instant (`MachineABonbons`).
 Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le modèle
 `ServerStorage/ModeleUsine` : les positions y sont relatives au centre de la parcelle (0, 0, 0).
@@ -61,8 +68,5 @@ Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le m
 
 ## Reste à faire
 
-1. **Sauvegarde DataStore** : sauvegarder l'argent et les achats de chaque joueur
-   pour les retrouver à la prochaine connexion (les achats sont les noms des objets
-   présents dans le dossier `Achats` de son usine).
-2. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
+1. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
    d'argent, achat de monnaie).

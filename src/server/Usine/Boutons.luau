@@ -34,8 +34,10 @@ local function ajouterPanneau(bouton, prix)
 	texte.Parent = panneau
 end
 
--- Prépare les boutons de l'usine "usine", qui appartient à "proprietaire"
-return function(usine, proprietaire)
+-- Prépare les boutons de l'usine "usine", qui appartient à "proprietaire".
+-- "achatsDejaFaits" est la liste des noms d'objets déjà achetés (venant de la
+-- sauvegarde) : ils sont posés tout de suite, sans payer.
+return function(usine, proprietaire, achatsDejaFaits)
 	local dossierBoutons = usine:WaitForChild("Boutons")
 	local dossierAchats = usine:WaitForChild("Achats")
 
@@ -61,6 +63,13 @@ return function(usine, proprietaire)
 		local objet = objetsCaches[bouton.Name]
 		if objet == nil then
 			warn("Aucun objet nommé '" .. bouton.Name .. "' dans le dossier Achats : bouton ignoré")
+			return
+		end
+
+		if table.find(achatsDejaFaits, bouton.Name) then
+			-- Déjà acheté lors d'une partie précédente : on pose l'objet directement
+			objet.Parent = dossierAchats
+			bouton:Destroy()
 			return
 		end
 
