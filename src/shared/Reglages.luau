@@ -92,6 +92,53 @@ Reglages.Pitie = {
 -- (Commun baisse d'autant). Rien ne le donne encore : à brancher plus tard.
 
 --------------------------------------------------------------------------------
+-- TYPES DE BONBONS ET PRIX
+--------------------------------------------------------------------------------
+
+-- Un type par zone. Le mélangeur choisit le type avec son attribut "TypeBonbon".
+--   ValeurDepart : valeur de la pâte qui sort du mélangeur (avant rareté et machines)
+--   Machines     : les machines de la zone qui multiplient la valeur (leur attribut
+--                  "Multiplicateur" est lu dans l'usine du joueur, seulement s'il les possède)
+--   Couleur      : couleur du bonbon quand il n'a pas encore de modèle (icônes)
+--
+-- PRIX D'UN BONBON (une seule formule, pour la vente automatique ET l'inventaire) :
+--   ValeurDepart × multiplicateurs des machines possédées × rareté × mutation
+Reglages.Types = {
+	Fraise = {
+		ValeurDepart = 4,
+		Machines = { "Cuiseur1", "Mouleur1", "Emballeuse1" },
+		Couleur = Color3.fromHex("F0476B"),
+	},
+	Menthe = {
+		ValeurDepart = 80,
+		Machines = { "Cuiseur2", "Mouleur2", "Emballeuse2" },
+		Couleur = Color3.fromHex("33D1A3"),
+	},
+	Or = {
+		ValeurDepart = 1600,
+		Machines = { "Cuiseur3", "Mouleur3", "Emballeuse3" },
+		Couleur = Color3.fromHex("FFC125"),
+	},
+}
+
+-- Mutations (à venir) : nom -> multiplicateur. "Normal" = pas de mutation.
+Reglages.Mutations = {
+	Normal = 1,
+}
+
+--------------------------------------------------------------------------------
+-- INVENTAIRE
+--------------------------------------------------------------------------------
+
+Reglages.Inventaire = {
+	Capacite = 50, -- nombre total de bonbons qu'on peut garder
+	SeuilParDefaut = "Peu commun", -- on garde les bonbons de cette rareté et au-dessus
+	ChoixSeuil = { "Commun", "Peu commun", "Rare", "Épique" }, -- boutons « Garder à partir de »
+	DelaiMessagePlein = 10, -- secondes minimum entre deux messages « Inventaire plein »
+	DelaiEntreDemandes = 0.15, -- secondes minimum entre deux demandes d'un joueur (anti-spam)
+}
+
+--------------------------------------------------------------------------------
 -- RÉGLAGES DE TEST (ne marchent QUE dans Studio, jamais dans le vrai jeu)
 --------------------------------------------------------------------------------
 

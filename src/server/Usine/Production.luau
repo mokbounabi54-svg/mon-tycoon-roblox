@@ -6,8 +6,8 @@
 --
 --   Role = "Melangeur"      crée des bonbons (de la pâte) à intervalle régulier ;
 --                           chaque bonbon tire sa rareté à ce moment-là (voir Rarete)
---     attributs : ValeurDepart (nombre), Intervalle (secondes),
---                 TypeBonbon (ex : "Fraise" ; le bonbon copie le modèle <Type>/Pate)
+--     attributs : Intervalle (secondes), TypeBonbon (ex : "Fraise" ; le bonbon copie
+--                 le modèle <Type>/Pate). La valeur de départ est dans Reglages.Types.
 --     pièce     : "Sortie" = l'endroit où la pâte apparaît (juste au-dessus du tapis)
 --
 --   Role = "Tapis"          fait avancer les bonbons posés dessus
@@ -22,7 +22,8 @@
 --     pièce     : "Zone" = une boîte invisible ; chaque bonbon qui la traverse est
 --                 transformé UNE seule fois par étape
 --
---   Role = "PointDeVente"   vend les bonbons et met l'argent dans la caisse
+--   Role = "PointDeVente"   garde les bonbons assez rares dans l'inventaire du joueur,
+--                           vend les autres (prix : module Prix) et met l'argent dans la caisse
 --     pièce     : "Zone"
 --
 -- Les machines du dossier "Machines" de l'usine marchent dès le départ ;
@@ -34,7 +35,12 @@ local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
 local Rarete = require(script.Parent:WaitForChild("Rarete"))
+local Prix = require(script.Parent:WaitForChild("Prix"))
+local Inventaire = require(script.Parent.Parent:WaitForChild("Inventaire"))
 
 -- Les modèles des bonbons (créés dans Studio, pas dans les fichiers)
 local dossierModeles = ServerStorage:FindFirstChild("ModelesBonbons")
@@ -160,6 +166,7 @@ local function creerBonbon(usine, dossierBonbons, sortie, valeur, typeBonbon)
 	local position = sortie.Position - Vector3.new(0, sortie.Size.Y / 2 + 0.6, 0)
 	local modele = trouverModele(typeBonbon, "Pate")
 	local bonbon = if modele then copierModele(usine, modele, position) else creerBouleDePate(position)
+	bonbon:SetAttribute("Type", typeBonbon) -- déjà mis par le modèle, mais pas sur une boule
 	bonbon:SetAttribute("Valeur", valeur)
 	bonbon.Parent = dossierBonbons
 
@@ -193,9 +200,14 @@ local function demarrerMelangeur(usine, dossierBonbons, machine)
 	if sortie == nil then
 		return
 	end
-	local valeur = machine:GetAttribute("ValeurDepart") or 1
 	local intervalle = machine:GetAttribute("Intervalle") or 2
-	local typeBonbon = machine:GetAttribute("TypeBonbon") -- ex : "Fraise" (nil = ancien rendu)
+	local typeBonbon = machine:GetAttribute("TypeBonbon") -- ex : "Fraise"
+	local infosType = Reglages.Types[typeBonbon]
+	if infosType == nil then
+		warn("Le mélangeur '" .. machine.Name .. "' n'a pas de TypeBonbon connu (voir Reglages.Types) : il ne produit rien")
+		return
+	end
+	local valeur = infosType.ValeurDepart
 
 	-- task.spawn lance la boucle à côté, sans bloquer le reste du script.
 	-- Elle s'arrête quand la machine est détruite (avec l'usine).
@@ -288,10 +300,25 @@ local function demarrerPointDeVente(usine, machine)
 		if bonbon == nil then
 			return
 		end
-		local valeur = math.floor(bonbon:GetAttribute("Valeur") + 0.5) -- arrondi au $ près
-		bonbon:SetAttribute("Valeur", nil) -- pour ne pas le vendre deux fois
+		local typeBonbon = bonbon:GetAttribute("Type")
+		local nomRarete = bonbon:GetAttribute("Rarete")
+		local mutation = bonbon:GetAttribute("Mutation") or "Normal"
+		bonbon:SetAttribute("Valeur", nil) -- pour ne pas le compter deux fois
 		bonbon:Destroy()
-		caisse:SetAttribute("Stock", (caisse:GetAttribute("Stock") or 0) + valeur)
+
+		-- Rareté assez haute (seuil du joueur) et de la place : il part dans l'inventaire
+		local proprietaire = Players:GetPlayerByUserId(usine:GetAttribute("Proprietaire") or 0)
+		if Inventaire.essayerDeGarder(proprietaire, typeBonbon, nomRarete, mutation) then
+			return
+		end
+
+		-- Sinon il est vendu, au même prix que s'il était vendu depuis l'inventaire
+		local prix = Prix.calculer(usine, typeBonbon, nomRarete, mutation)
+		if prix == nil then
+			warn("Bonbon de type '" .. tostring(typeBonbon) .. "' inconnu : vendu 0 $")
+			prix = 0
+		end
+		caisse:SetAttribute("Stock", (caisse:GetAttribute("Stock") or 0) + prix)
 	end)
 end
 

@@ -20,7 +20,7 @@ return function()
 	-- Une colonne en haut au centre : les messages s'empilent les uns sous les autres
 	local colonne = Instance.new("Frame")
 	colonne.AnchorPoint = Vector2.new(0.5, 0)
-	colonne.Position = UDim2.new(0.5, 0, 0, 60)
+	colonne.Position = UDim2.new(0.5, 0, 0, 70) -- sous le compteur d'argent
 	colonne.Size = UDim2.new(0.6, 0, 0.4, 0)
 	colonne.BackgroundTransparency = 1
 	colonne.Parent = ecran

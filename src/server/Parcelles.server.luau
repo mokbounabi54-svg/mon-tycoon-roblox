@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Sauvegarde = require(script.Parent:WaitForChild("Sauvegarde"))
+local Inventaire = require(script.Parent:WaitForChild("Inventaire"))
 local Usine = script.Parent:WaitForChild("Usine")
 local demarrerCaisse = require(Usine.Caisse)
 local demarrerBoutons = require(Usine.Boutons)
@@ -52,14 +53,16 @@ local function trouverEmplacementLibre()
 	return nil
 end
 
--- Rassemble ce qu'il faut sauvegarder pour un joueur : son argent et les noms
--- des objets présents dans le dossier Achats de son usine.
+-- Rassemble ce qu'il faut sauvegarder pour un joueur : son argent, les noms
+-- des objets présents dans le dossier Achats de son usine, son inventaire,
+-- son seuil de garde et son compteur de pitié.
 -- Renvoie nil si quelque chose manque (on ne sauvegarde pas plutôt que
 -- d'enregistrer des données fausses).
 local function lireDonnees(joueur, usine)
 	local leaderstats = joueur:FindFirstChild("leaderstats")
 	local argent = leaderstats and leaderstats:FindFirstChild("Argent")
-	if argent == nil then
+	local inventaire = Inventaire.lire(joueur)
+	if argent == nil or inventaire == nil then
 		return nil
 	end
 
@@ -68,7 +71,13 @@ local function lireDonnees(joueur, usine)
 		table.insert(achats, objet.Name)
 	end
 
-	return { Argent = argent.Value, Achats = achats }
+	return {
+		Argent = argent.Value,
+		Achats = achats,
+		Inventaire = inventaire.Inventaire,
+		SeuilGarde = inventaire.SeuilGarde,
+		CompteurPitie = joueur:GetAttribute("CompteurPitie") or 0,
+	}
 end
 
 -- Envoie les données au DataStore et affiche le résultat dans la sortie
@@ -144,7 +153,7 @@ local function quandUnJoueurArrive(joueur)
 		-- On le laisse jouer, mais sans jamais sauvegarder : sinon sa vraie
 		-- sauvegarde serait écrasée par cette partie recommencée à zéro.
 		warn("Impossible de charger la sauvegarde de " .. joueur.Name .. " : cette partie ne sera pas sauvegardée")
-		donnees = { Argent = 0, Achats = {} }
+		donnees = { Argent = 0, Achats = {}, Inventaire = {}, CompteurPitie = 0 }
 	end
 
 	local numero = trouverEmplacementLibre()
@@ -157,6 +166,7 @@ local function quandUnJoueurArrive(joueur)
 	-- Le script Leaderstats crée la valeur Argent ; on y met l'argent sauvegardé
 	local argent = joueur:WaitForChild("leaderstats"):WaitForChild("Argent")
 	argent.Value = donnees.Argent
+	joueur:SetAttribute("CompteurPitie", donnees.CompteurPitie) -- pitié de la rareté (module Rarete)
 
 	local usine = modeleUsine:Clone()
 	usine.Name = "Usine de " .. joueur.Name
@@ -168,6 +178,7 @@ local function quandUnJoueurArrive(joueur)
 	peutSauvegarder[joueur] = reussi
 
 	ajouterPanneauProprietaire(usine, joueur)
+	Inventaire.demarrer(joueur, usine, donnees) -- avant la production : le point de vente s'en sert
 	demarrerCaisse(usine, joueur)
 	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
 	demarrerBoutons(usine, joueur, donnees.Achats)
@@ -192,6 +203,7 @@ local function quandUnJoueurPart(joueur)
 	end
 	usines[joueur] = nil
 	peutSauvegarder[joueur] = nil
+	Inventaire.arreter(joueur) -- après la sauvegarde, qui a lu l'inventaire
 
 	for numero, occupant in occupants do
 		if occupant == joueur then

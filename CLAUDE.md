@@ -40,11 +40,21 @@ achète de nouvelles machines grâce à des boutons posés au sol.
   `EMPLACEMENTS`, espacés de 130). Charge la sauvegarde, copie `ModeleUsine` sur un emplacement
   libre, démarre la caisse, la production et les boutons, fait apparaître le joueur sur
   `Apparition`. Sauvegarde au départ, toutes les 2 minutes et à l'arrêt du serveur (`BindToClose`).
-- `Sauvegarde.luau` : DataStore `Joueurs_v2` (`Joueurs_v1` = ancien, abandonné le 2026-10-02, données laissées intactes), format `{ Version = 2, Argent, Achats }`,
-  3 essais en cas d'erreur. Si le chargement échoue, le joueur n'est jamais sauvegardé.
-  `migrer` convertit les sauvegardes version 1 : les 10 anciennes machines (MachineABonbons…)
-  sont remboursées à leur prix. Pour un futur changement de format : augmenter `VERSION`
-  et ajouter un cas dans `migrer`.
+- `Sauvegarde.luau` : DataStore `Joueurs_v2` (`Joueurs_v1` = ancien, abandonné le 2026-10-02,
+  données laissées intactes). Format **version 3** :
+  `{ Version = 3, Argent, Achats, Inventaire = { ["Type|Rareté|Mutation"] = quantité },
+  SeuilGarde, CompteurPitie }`. 3 essais en cas d'erreur. Si le chargement échoue, le joueur
+  n'est jamais sauvegardé. `Sauvegarde.migrer` : version 1 → les 10 anciennes machines
+  (MachineABonbons…) sont remboursées ; version 2 → 3 : inventaire vide, seuil par défaut,
+  pitié 0 (argent et achats inchangés). Pour un futur format : augmenter `VERSION` et
+  ajouter un cas dans `migrer`.
+- `Inventaire.luau` (serveur) : **seul** module qui modifie l'inventaire (piles par joueur,
+  capacité, seuil, vente). Vérifie chaque demande de l'écran (clé valable, quantité entière
+  ≤ possédée, anti-spam 0,15 s) ; renvoie toujours l'état réel. Copie `ModelesBonbons` dans
+  `ReplicatedStorage` au démarrage (pour les icônes). `Parcelles` appelle `demarrer` au
+  chargement, `lire` pour sauvegarder et `arreter` au départ (après la sauvegarde).
+- `Usine/Prix.luau` : **LA** fonction de prix (`Prix.calculer(usine, type, rareté, mutation)`),
+  utilisée par le point de vente ET l'inventaire : un bonbon vaut pareil des deux côtés.
 - `Usine/Production.luau` : fait fonctionner chaque machine d'après son attribut `Role`
   (voir plus bas). Un Model **sans** `Role` est un groupe : chaque machine qu'il contient
   démarre (c'est le cas des achats `Zone2` et `Zone3`). Groupes de collision : les bonbons ne touchent ni les autres bonbons ni les
@@ -58,11 +68,22 @@ achète de nouvelles machines grâce à des boutons posés au sol.
   sortie du mélangeur), pitié, bonus de chance, apparence (couleur, matière, particules,
   son, lumière) et messages à l'écran.
 - `Remotes.luau` : crée les RemoteEvents dans `ReplicatedStorage/Remotes`
-  (`Remotes.obtenir(nom)`). Existant : `Annonce` (serveur → écran : texte, couleur).
-- `shared/Reglages.luau` : **le** module de réglages (raretés, pitié, réglages de test).
-  Tous les chiffres d'équilibrage vont ici, pas dans le code.
+  (`Remotes.obtenir(nom)`). Existants : `Annonce` (serveur → écran : texte, couleur),
+  `InventaireMaj` (serveur → écran : `{ Piles = { {Cle, Type, Rarete, Mutation, Quantite,
+  PrixUnitaire} }, Total, Capacite, Seuil, Vente? }`), et écran → serveur : `DemanderInventaire`,
+  `VendreBonbons(cle, quantite)`, `ToutVendre()`, `ChoisirSeuil(nom)`. **L'écran n'envoie
+  jamais de prix ni de valeur.**
+- `shared/Reglages.luau` : **le** module de réglages (raretés, pitié, types et valeurs de
+  départ, mutations, inventaire, réglages de test). Tous les chiffres d'équilibrage vont ici.
 - `client/init.client.luau` : démarre les modules d'interface rangés à côté de lui.
-  `client/Annonces.luau` : messages en haut de l'écran (4 s puis fondu).
+  `client/Annonces.luau` : messages en haut de l'écran (4 s puis fondu, à 70 px du haut).
+  `client/Argent.luau` : compteur d'argent en haut au centre (lit `leaderstats.Argent`,
+  le chiffre défile et la pastille grossit quand on gagne).
+  `client/Theme.luau` : **le** style de toutes les interfaces (police FredokaOne, couleurs,
+  couleurs de rareté pour l'interface, arrondis, son de vente) et des briques
+  (`Theme.bouton` à ombre épaisse, `Theme.panneau`, `Theme.pastille`, `Theme.texte`).
+  Les prochains écrans (carnet, sorcière, boutique) doivent s'en servir.
+  `client/Inventaire.luau` : l'écran d'inventaire (voir plus bas).
 
 ## Structure de `ServerStorage/ModeleUsine`
 
@@ -117,8 +138,9 @@ sont en jeu en même temps (limite : 80).
 
 **Attention, ces durées datent d'avant la rareté.** Avec les chances actuelles, un bonbon vaut
 en moyenne ×2,32 (pitié non comptée) : tous les revenus du tableau sont à multiplier par ≈ 2,3
-et la durée tombe à ≈ 50 min. L'inventaire (sous-étape B) changera encore ce calcul, car les
-bonbons gardés ne sont plus vendus automatiquement. Prix pas encore revus.
+et la durée tombe à ≈ 50 min. L'inventaire ne change pas la valeur d'un bonbon (même fonction
+de prix), mais un bonbon gardé puis vendu après l'achat d'une machine de sa zone rapporte
+plus (le prix suit les machines possédées au moment de la vente). Prix pas encore revus.
 
 ## Modèles des bonbons (`ServerStorage/ModelesBonbons`)
 
@@ -175,11 +197,41 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
   le son et les messages ne sont joués qu'une fois (`Rarete.appliquer`).
 - Pas de `Highlight` (Roblox en affiche 31 au maximum à la fois).
 - **Pitié** : attribut `CompteurPitie` du joueur = nombre de bonbons de suite sous Épique.
-  À 150, le suivant est Épique. Pas encore sauvegardé (prévu en version 3, sous-étape B).
+  À 150, le suivant est Épique. Sauvegardé (`CompteurPitie`, version 3).
 - **Bonus de chance** : attribut `BonusChance` du joueur (0,5 = +50 %), multiplie les chances
   de tout ce qui est au-dessus de Commun. Rien ne le donne encore.
 - Son : `rbxasset://sounds/electronicpingshort.wav` (fourni avec Roblox), bouche-trou.
 - Testé sur 1 million de tirages : pourcentages conformes, jamais plus de 150 sous Épique.
+
+## Inventaire
+
+- Au point de vente : rareté ≥ seuil du joueur (`SeuilGarde`, défaut « Peu commun ») et
+  place libre → le bonbon va dans l'inventaire ; inventaire plein → vendu dans la caisse
+  (message « Inventaire plein » au plus toutes les 10 s) ; sinon vendu comme avant.
+- Le prix de vente (automatique ou depuis l'inventaire) vient de `Prix.calculer`, **pas** de
+  l'attribut `Valeur` du bonbon (qui n'est plus qu'indicatif) :
+  `Reglages.Types[type].ValeurDepart × Multiplicateur des machines de Types[type].Machines
+  possédées × rareté × mutation`, arrondi au $. Ex. Fraise Rare : 20 $ sans machine,
+  200 $ avec les 3 ; Or Mythique : 800 000 $ → 8 000 000 $.
+- Piles `"Type|Rareté|Mutation"` → quantité (mutation : seulement `Normal` pour l'instant).
+  Capacité `Reglages.Inventaire.Capacite` = 50 (somme des quantités). Choix du seuil :
+  Commun, Peu commun, Rare, Épique (`Reglages.Inventaire.ChoixSeuil`).
+- **Écran** (`client/Inventaire.luau`, d'après `docs/design/Inventaire (ordinateur)` et
+  `(téléphone, paysage)`) : bouton « Inventaire » à gauche à mi-hauteur + touche I ; la croix
+  ou un clic sur le fond ferme. Piles triées par rareté décroissante puis quantité ; une pile
+  sélectionnée (bordure violette) s'affiche dans le détail (« Vendre 1 », « Vendre les N »).
+  « Tout vendre » demande confirmation s'il y a un Épique ou mieux. Son doux à la vente.
+- Mise en page téléphone si `UserInputService.TouchEnabled` (tablette comprise), sinon
+  ordinateur. Tailles en px de maquette (1080 × 628 / 700 × 334) + `UIScale`, bornée par
+  `EchelleMin` = 0,87 pour garder textes ≥ 13 px et zones cliquables ≥ 44 px. Marge du haut
+  = barre Roblox (≥ 58 px). Vérifié par calcul : 667 × 375, 844 × 390, 1024 × 768,
+  1280 × 720 sans défaut ; à 1024 × 600 (petit écran d'ordinateur) le panneau mord de
+  ≈ 12 px sur la bande du menu Roblox (limite acceptée).
+- Icônes : `ViewportFrame` avec le modèle `<Type>/Moule` (copié dans
+  `ReplicatedStorage/ModelesBonbons` par le serveur), teinté comme dans l'usine ; boule de
+  `Reglages.Types[type].Couleur` si le modèle manque. Une seule caméra partagée ; seules les
+  cartes visibles ont un bonbon 3D. `InterfaceInventaire.creer(conteneur, options)` permet
+  de construire le panneau dans un cadre de test d'une taille d'écran simulée.
 
 ## Tester sans abîmer la vraie sauvegarde
 
@@ -192,8 +244,18 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 - Pour tester des machines achetées sans toucher à l'argent du joueur : cloner `ModeleUsine`
   dans le Workspace sur un emplacement libre (sans boutons ni caisse démarrée) et appeler
   `Production` dessus.
+- **DataStore de test** : l'attribut texte `DataStoreTest` sur `ServerStorage` (ex :
+  `"Test_Inventaire"`) envoie toutes les lectures ET écritures dans ce DataStore-là. Ne marche
+  **que dans Studio** (`RunService:IsStudio()`), jamais dans le jeu publié. Pour un test de
+  sauvegarde / rechargement / migration : poser l'attribut en mode édition, y écrire une
+  fausse sauvegarde, jouer, arrêter, relire, puis **retirer l'attribut** (vérifier qu'il est
+  bien `nil` à la fin).
+- Pour relire une sauvegarde juste après l'avoir écrite, utiliser `GetAsync` avec
+  `DataStoreGetOptions.UseCache = false` : sinon Roblox renvoie une copie en cache vieille de
+  quelques secondes (fausse alerte vue pendant les tests de B).
 - Un module requis depuis l'outil MCP n'est **pas** le même que celui des scripts du jeu :
-  modifier `Reglages` depuis MCP ne change pas l'usine du joueur.
+  modifier `Reglages` depuis MCP ne change pas l'usine du joueur. Côté écran, on peut
+  écouter `InventaireMaj` et envoyer des demandes depuis MCP pour tester le serveur.
 
 ## Conventions
 
@@ -207,12 +269,12 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 
   | Role | Attributs | Pièce indispensable |
   |---|---|---|
-  | `Melangeur` | `ValeurDepart`, `Intervalle` | `Sortie` (la pâte apparaît juste dessous) |
+  | `Melangeur` | `TypeBonbon` (Fraise/Menthe/Or, la valeur de départ est dans `Reglages.Types`), `Intervalle` | `Sortie` (la pâte apparaît juste dessous) |
   | `Tapis` | `Vitesse` | `Surface` (avance dans le sens de sa face avant) |
   | `Transformation` | `Etape`, `Multiplicateur`, `CouleurBonbon`, `FormeBonbon` (Boule/Cube/Cylindre), `MatiereBonbon` | `Zone` (boîte invisible, CanTouch) |
   | `PointDeVente` | — | `Zone` |
 
-- Un bonbon est un Model (ou, ancien rendu, une Part) nommé `Bonbon` avec les attributs `Valeur` et `Rarete`, rangé dans le dossier
+- Un bonbon est un Model (ou, ancien rendu, une Part) nommé `Bonbon` avec les attributs `Type`, `Rarete` et `Valeur` (indicative : le prix de vente vient de `Prix`), rangé dans le dossier
   `Bonbons` de l'usine. Il reçoit un attribut `true` par étape franchie (ex : `Cuisson`) :
   chaque étape ne s'applique qu'une fois.
 - Les bonbons en boule roulent sur le tapis et avancent donc un peu moins vite que `Vitesse`.
@@ -231,12 +293,8 @@ puis **attendre son « commit »** avant la suivante.
 
 - [x] A. Rareté (ci-dessus).
 - [ ] Modèles de bonbons : Fraise faite ; **Menthe et Or : attendre le feu vert**
-  (puis `TypeBonbon` = `Menthe` / `Or` sur les mélangeurs des zones 2 et 3).
-- [ ] B. Inventaire : seuil de garde (défaut Peu commun), piles `"Type|Rareté|Mutation"`,
-  capacité 50, plein → vendu dans la caisse avec message, interface Vendre / Tout vendre,
-  sauvegarde version 3 (+ `CompteurPitie`) avec migration depuis la version 2.
-  Type = saveur de la zone (Fraise, Menthe, Or). Prix d'un bonbon gardé calculé à la vente :
-  valeur de départ du type × machines possédées dans la zone × rareté × mutation.
+  (`TypeBonbon` = `Menthe` / `Or` est déjà posé sur les mélangeurs des zones 2 et 3).
+- [x] B. Inventaire (ci-dessus) — en attente du « commit » de l'utilisateur.
 - [ ] C. Carnet : combinaisons type + rareté découvertes, grille, compteur, « Nouveau ! ».
 - [ ] D. Sorcière : 3 bonbons de même rareté (types mélangés possibles, le résultat prend
   le type de l'un des trois au hasard) → rareté supérieure ou « Bonbon raté » ; pitié après

@@ -4,8 +4,13 @@
 -- les données même quand le serveur s'éteint. Chaque joueur a sa propre case,
 -- repérée par une "clé" construite avec son UserId.
 --
--- Une sauvegarde ressemble à ça :
---   { Version = 2, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" } }
+-- Une sauvegarde ressemble à ça (version 3) :
+--   {
+--     Version = 3, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" },
+--     Inventaire = { ["Fraise|Rare|Normal"] = 4 },   -- les piles de bonbons gardés
+--     SeuilGarde = "Peu commun",                     -- garder à partir de cette rareté
+--     CompteurPitie = 37,                            -- bonbons de suite sous Épique
+--   }
 --
 -- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
 -- on augmente VERSION et on convertit les anciennes sauvegardes (voir migrer).
@@ -15,14 +20,17 @@
 -- réessaie plusieurs fois avant d'abandonner.
 
 local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
+
+local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
 
 local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
-local VERSION = 2
+local VERSION = 3
 
 -- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
 -- Elles n'existent plus : on rembourse leur prix au joueur.
@@ -55,6 +63,26 @@ local function cle(userId)
 	return "joueur_" .. userId
 end
 
+-- DataStore de test (SEULEMENT dans Studio, jamais dans le jeu publié) :
+-- si ServerStorage a un attribut texte "DataStoreTest" (ex : "Test_Joueurs"),
+-- toutes les lectures et écritures vont dans ce DataStore-là au lieu du vrai.
+-- On peut ainsi tester sauvegarde, rechargement et migration sans toucher aux vraies parties.
+-- Dans le jeu publié, RunService:IsStudio() vaut false : l'attribut est ignoré.
+local function choisirDataStore()
+	local nomTest = ServerStorage:GetAttribute("DataStoreTest")
+	if RunService:IsStudio() and typeof(nomTest) == "string" and nomTest ~= "" then
+		local ok, storeTest = pcall(function()
+			return DataStoreService:GetDataStore(nomTest)
+		end)
+		if ok then
+			return storeTest
+		end
+		warn("DataStore de test '" .. nomTest .. "' indisponible : " .. tostring(storeTest))
+		return nil
+	end
+	return dataStore
+end
+
 -- Appelle "action" jusqu'à NOMBRE_ESSAIS fois, tant qu'elle échoue.
 -- Renvoie : réussi (true/false), puis le résultat ou le message d'erreur.
 local function essayerPlusieursFois(description, action)
@@ -73,7 +101,8 @@ local function essayerPlusieursFois(description, action)
 end
 
 -- Convertit une sauvegarde d'une ancienne version au format actuel
-local function migrer(userId, donnees)
+-- (rangée dans Sauvegarde pour pouvoir aussi la tester toute seule)
+function Sauvegarde.migrer(userId, donnees)
 	local version = if typeof(donnees.Version) == "number" then donnees.Version else 1
 	if version < 2 then
 		local achatsGardes = {}
@@ -92,21 +121,30 @@ local function migrer(userId, donnees)
 			print("Sauvegarde de " .. userId .. " convertie : " .. rembourse .. " $ remboursés pour les anciennes machines")
 		end
 	end
+	if version < 3 then
+		-- Version 3 : inventaire, seuil de garde et compteur de pitié. On part de
+		-- valeurs vides ; l'argent et les achats ne changent pas.
+		donnees.Inventaire = {}
+		donnees.SeuilGarde = Reglages.Inventaire.SeuilParDefaut
+		donnees.CompteurPitie = 0
+		print("Sauvegarde de " .. userId .. " convertie en version 3 (inventaire vide)")
+	end
 	donnees.Version = VERSION
 end
 
 -- Charge la sauvegarde d'un joueur.
--- Renvoie : réussi, puis les données ({ Argent, Achats }).
+-- Renvoie : réussi, puis les données (voir le format en haut du fichier).
 -- Un nouveau joueur (pas encore de sauvegarde) reçoit des données vides : c'est une réussite.
 -- Si ça échoue, il ne faudra PAS sauvegarder ce joueur, sinon on écraserait
 -- sa vraie sauvegarde avec une partie recommencée à zéro.
 function Sauvegarde.charger(userId)
-	if dataStore == nil then
+	local store = choisirDataStore()
+	if store == nil then
 		return false, nil
 	end
 
 	local reussi, donnees = essayerPlusieursFois("Chargement de " .. userId, function()
-		return dataStore:GetAsync(cle(userId))
+		return store:GetAsync(cle(userId))
 	end)
 	if not reussi then
 		return false, nil
@@ -122,7 +160,18 @@ function Sauvegarde.charger(userId)
 	if typeof(donnees.Achats) ~= "table" then
 		donnees.Achats = {}
 	end
-	migrer(userId, donnees)
+	Sauvegarde.migrer(userId, donnees)
+
+	-- Les champs de la version 3 (le détail de chaque pile est vérifié par Inventaire)
+	if typeof(donnees.Inventaire) ~= "table" then
+		donnees.Inventaire = {}
+	end
+	if typeof(donnees.SeuilGarde) ~= "string" then
+		donnees.SeuilGarde = Reglages.Inventaire.SeuilParDefaut
+	end
+	if typeof(donnees.CompteurPitie) ~= "number" or donnees.CompteurPitie < 0 then
+		donnees.CompteurPitie = 0
+	end
 	return true, donnees
 end
 
@@ -135,13 +184,14 @@ end
 
 -- Enregistre les données d'un joueur. Renvoie true si ça a marché.
 function Sauvegarde.enregistrer(userId, donnees)
-	if dataStore == nil or Sauvegarde.modeTest() then
+	local store = choisirDataStore()
+	if store == nil or Sauvegarde.modeTest() then
 		return false
 	end
 
 	donnees.Version = VERSION
 	local reussi = essayerPlusieursFois("Sauvegarde de " .. userId, function()
-		dataStore:SetAsync(cle(userId), donnees, { userId })
+		store:SetAsync(cle(userId), donnees, { userId })
 	end)
 	return reussi
 end
