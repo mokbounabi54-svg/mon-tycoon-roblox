@@ -32,6 +32,9 @@ achète de nouvelles machines grâce à des boutons posés au sol.
 - Pareil pour **`ServerStorage/ModelesBonbons`** (les modèles des bonbons) : créés par la
   connexion Studio, ils n'existent que dans Studio (ni dans `default.project.json`, ni dans Git).
 - Les maquettes de l'utilisateur sont dans `docs/design/` (types et étapes, raretés, Halloween).
+- Les **sources des modèles 3D** (fichiers `.glb`...) sont dans `assets/modeles/` (ex :
+  `assets/modeles/sorciere/witch-figurine.glb`) ; une fois importés, les modèles n'existent
+  **que dans Studio** (Rojo ne les synchronise pas, Git ne garde que ces fichiers sources).
 
 ## Architecture
 
@@ -268,9 +271,30 @@ de suite ; les machines multiplient ensuite, donc la rareté compte jusqu'à la 
 
 - `server/Sorciere.luau` : pose une copie de `ServerStorage/PNJ/Sorciere` (modèle de formes
   simples créé dans Studio, **seulement** dans Studio) dans chaque usine (dossier `PNJ`), à
-  `Reglages.Sorciere.Position` (-15, 0, -52), tournée vers +X. Le modèle doit seulement avoir
-  une Part `Prompt` (avec une `ProximityPrompt`) et une Part `Chaudron` (fumée) ; le reste est
-  décoratif. Seul le propriétaire peut lui parler (`SorciereOuvrir` → écran).
+  `Reglages.Sorciere.Position` (-15, 0, -52), debout, face au point d'entrée (`Apparition`).
+  Seul le propriétaire peut lui parler (`SorciereOuvrir` → écran).
+
+### Remplacer le modèle de la sorcière (règle)
+
+Corrigé le 2026-10-02 : elle apparaissait **couchée**, car sa PrimaryPart était la robe, un
+cylindre tourné de 90° ; le script redresse la PrimaryPart, donc tout le reste se couchait.
+**Ne jamais prendre comme PrimaryPart une pièce tournée** (cylindre, pièce penchée...).
+
+| Quoi | Règle |
+|---|---|
+| Nom et place | un **Model** nommé exactement `Sorciere`, dans `ServerStorage/PNJ` (remplacer l'ancien) |
+| PrimaryPart | une Part nommée `Base` (le nom est conseillé, c'est la PrimaryPart qui compte), **à plat, non tournée**, posée sous ses pieds : **le bas de la Base = le sol**. Invisible (Transparency 1), CanCollide / CanTouch / CanQuery = false |
+| Devant | la sorcière regarde dans le sens de la **face avant (-Z, LookVector) de la Base** ; mettre le chaudron et la `Prompt` de ce côté |
+| ProximityPrompt | dans une Part nommée **`Prompt`** (n'importe où dans le modèle, même dans un sous-modèle), à côté du chaudron. La distance « assez près » (25 studs, `Reglages.Sorciere.DistanceMax`) est mesurée depuis cette Part |
+| Fumée | (optionnel) une Part nommée **`Chaudron`** : la fumée et le son en sortent |
+| Ancrage | **toutes** les pièces Anchored = true (le script les ancre de toute façon à la copie) |
+| Le reste | décoratif, libre (nombre de pièces, couleurs, maillages) |
+
+Placement fait par le script, dans chaque parcelle : position = `Reglages.Sorciere.Position`
+dans le repère de la parcelle (sur le dessus du `Sol`, bas de la Base posé dessus), puis
+rotation autour de la verticale seulement pour que le devant de la Base regarde la Part
+`Apparition` de la parcelle (fonctionne pour les parcelles tournées d'un demi-tour ; vérifié).
+`PivotOffset` de la Base remis à zéro à la copie : un pivot déplacé dans Studio ne gêne pas.
 - Règles (`Reglages.Sorciere`) : 3 bonbons de la même rareté (pas Mythique, pas raté), joueur
   à ≤ 25 studs du chaudron, une transformation à la fois. Taux selon la rareté visée :
   Peu commun 80 %, Rare 60 %, Épique 40 %, Légendaire 25 %, Mythique 10 %. Réussite : type
