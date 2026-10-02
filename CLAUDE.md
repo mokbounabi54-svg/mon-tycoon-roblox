@@ -52,7 +52,24 @@ Déjà fait (scripts dans `src/server/`) :
   pas écraser sa vraie sauvegarde. L'argent en attente dans le collecteur n'est pas sauvegardé.
   Pour tester dans Studio, il faut activer « Activer l'accès de Studio aux services API ».
 
-Une seule machine existe pour l'instant (`MachineABonbons`).
+Progression : 10 machines au-dessus d'un grand collecteur (40 × 12), en 2 rangées de 5.
+Chaque bouton a un attribut `Requiert` (la machine précédente) : un seul bouton est visible à la fois.
+
+| Machine | Prix | ValeurBonbon | Intervalle | Gain |
+|---|---|---|---|---|
+| MachineABonbons | 50 | 10 | 2 | 5 $/s |
+| MachineASucettes | 150 | 20 | 2 | 10 $/s |
+| MachineAGuimauves | 400 | 30 | 1.5 | 20 $/s |
+| MachineACaramels | 1 000 | 60 | 1.5 | 40 $/s |
+| MachineAChocolats | 2 500 | 100 | 1.25 | 80 $/s |
+| MachineAReglisse | 6 000 | 160 | 1 | 160 $/s |
+| MachineADragees | 15 000 | 300 | 1 | 300 $/s |
+| MachineANougats | 40 000 | 600 | 1 | 600 $/s |
+| MachineAMacarons | 100 000 | 1 200 | 1 | 1 200 $/s |
+| MachineArcEnCiel | 250 000 | 2 400 | 1 | 2 400 $/s |
+
+Rojo ne synchronise pas `ServerStorage` dans la session actuelle : toute modification de
+`ModeleUsine` doit être faite **à la fois** dans `default.project.json` et dans Studio.
 Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le modèle
 `ServerStorage/ModeleUsine` : les positions y sont relatives au centre de la parcelle (0, 0, 0).
 
@@ -60,7 +77,8 @@ Pour modifier l'usine (ajouter une machine, déplacer un objet), on modifie le m
 
 - **Un bouton et l'objet qu'il achète portent exactement le même nom.** Le bouton va
   dans `ModeleUsine/Boutons`, l'objet dans `ModeleUsine/Achats`, déjà placé à sa position finale.
-- Un bouton doit avoir un attribut `Prix` (nombre).
+- Un bouton doit avoir un attribut `Prix` (nombre). Optionnels : `Titre` (texte affiché sur
+  le panneau) et `Requiert` (nom de l'achat à faire avant que le bouton apparaisse).
 - Une machine doit avoir un attribut `ValeurBonbon` (nombre), et optionnellement
   `Intervalle` (secondes). Si c'est un Model, elle contient une Part nommée `Sortie`.
 - Les bonbons sont des Parts nommées `Bonbon` avec un attribut `Valeur`.

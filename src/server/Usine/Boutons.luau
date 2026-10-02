@@ -1,8 +1,11 @@
 -- Boutons d'achat d'une usine.
 --
 -- Dans le modèle d'usine (ServerStorage/ModeleUsine) :
---   Boutons : un dossier qui contient les boutons (des Parts).
---             Chaque bouton a un attribut "Prix" (nombre).
+--   Boutons : un dossier qui contient les boutons (des Parts). Chaque bouton a :
+--               - un attribut "Prix" (nombre) : obligatoire
+--               - un attribut "Titre" (texte) : le nom affiché sur le panneau (optionnel)
+--               - un attribut "Requiert" (texte) : le nom de l'achat à faire avant.
+--                 Le bouton reste caché tant que cet achat n'est pas fait (optionnel)
 --   Achats  : un dossier qui contient les objets à acheter, déjà placés
 --             à leur position finale. Chaque objet porte EXACTEMENT
 --             le même nom que son bouton.
@@ -16,10 +19,26 @@ local Players = game:GetService("Players")
 
 local COULEUR_PAS_ASSEZ = Color3.fromRGB(255, 80, 80) -- clignotement si pas assez d'argent
 
-local function ajouterPanneau(bouton, prix)
+-- Écrit un nombre avec des espaces entre les milliers : 250000 -> "250 000"
+local function formaterNombre(nombre)
+	local texte = tostring(math.floor(nombre))
+	return (texte:reverse():gsub("(%d%d%d)", "%1 "):reverse():gsub("^ ", ""))
+end
+
+local function ajouterPanneau(bouton, prix, objet)
+	local titre = bouton:GetAttribute("Titre") or bouton.Name
+	local lignes = titre .. "\n" .. formaterNombre(prix) .. " $"
+
+	-- Pour une machine, on affiche aussi ce qu'elle rapporte par seconde
+	local valeur = objet:GetAttribute("ValeurBonbon")
+	local intervalle = objet:GetAttribute("Intervalle")
+	if typeof(valeur) == "number" and typeof(intervalle) == "number" and intervalle > 0 then
+		lignes ..= "\n+" .. formaterNombre(valeur / intervalle) .. " $/s"
+	end
+
 	local panneau = Instance.new("BillboardGui")
-	panneau.Size = UDim2.fromScale(6, 2)
-	panneau.StudsOffset = Vector3.new(0, 3, 0)
+	panneau.Size = UDim2.fromScale(7, 3)
+	panneau.StudsOffset = Vector3.new(0, 3.5, 0)
 	panneau.MaxDistance = 60
 	panneau.Parent = bouton
 
@@ -30,7 +49,7 @@ local function ajouterPanneau(bouton, prix)
 	texte.Font = Enum.Font.FredokaOne
 	texte.TextColor3 = Color3.fromRGB(255, 255, 255)
 	texte.TextStrokeTransparency = 0
-	texte.Text = bouton.Name .. "\n" .. prix .. " $"
+	texte.Text = lignes
 	texte.Parent = panneau
 end
 
@@ -49,31 +68,13 @@ return function(usine, proprietaire, achatsDejaFaits)
 		objet.Parent = nil -- l'objet garde sa position pour plus tard
 	end
 
-	local function preparerBouton(bouton)
-		if not bouton:IsA("BasePart") then
-			return
-		end
+	local function estAchete(nom)
+		return dossierAchats:FindFirstChild(nom) ~= nil
+	end
 
-		local prix = bouton:GetAttribute("Prix")
-		if typeof(prix) ~= "number" then
-			warn("Le bouton '" .. bouton.Name .. "' n'a pas d'attribut Prix (nombre) : ignoré")
-			return
-		end
-
-		local objet = objetsCaches[bouton.Name]
-		if objet == nil then
-			warn("Aucun objet nommé '" .. bouton.Name .. "' dans le dossier Achats : bouton ignoré")
-			return
-		end
-
-		if table.find(achatsDejaFaits, bouton.Name) then
-			-- Déjà acheté lors d'une partie précédente : on pose l'objet directement
-			objet.Parent = dossierAchats
-			bouton:Destroy()
-			return
-		end
-
-		ajouterPanneau(bouton, prix)
+	-- Le bouton fonctionne : panneau + achat quand le propriétaire marche dessus
+	local function activerBouton(bouton, prix, objet)
+		ajouterPanneau(bouton, prix, objet)
 
 		local couleurNormale = bouton.Color
 		local achete = false
@@ -112,7 +113,52 @@ return function(usine, proprietaire, achatsDejaFaits)
 		end)
 	end
 
+	-- 1re étape : on vérifie chaque bouton, et on repose tout de suite les
+	-- objets déjà achetés (sauvegarde). On garde les autres boutons pour la suite.
+	local boutonsRestants = {}
 	for _, bouton in dossierBoutons:GetChildren() do
-		preparerBouton(bouton)
+		if not bouton:IsA("BasePart") then
+			continue
+		end
+
+		local prix = bouton:GetAttribute("Prix")
+		if typeof(prix) ~= "number" then
+			warn("Le bouton '" .. bouton.Name .. "' n'a pas d'attribut Prix (nombre) : ignoré")
+			continue
+		end
+
+		local objet = objetsCaches[bouton.Name]
+		if objet == nil then
+			warn("Aucun objet nommé '" .. bouton.Name .. "' dans le dossier Achats : bouton ignoré")
+			continue
+		end
+
+		if table.find(achatsDejaFaits, bouton.Name) then
+			-- Déjà acheté lors d'une partie précédente : on pose l'objet directement
+			objet.Parent = dossierAchats
+			bouton:Destroy()
+		else
+			table.insert(boutonsRestants, { bouton = bouton, prix = prix, objet = objet })
+		end
+	end
+
+	-- 2e étape : on active les boutons restants. Ceux dont l'achat requis
+	-- n'est pas encore fait sont cachés, et réapparaissent au bon moment.
+	for _, infos in boutonsRestants do
+		local bouton = infos.bouton
+		activerBouton(bouton, infos.prix, infos.objet)
+
+		local requis = bouton:GetAttribute("Requiert")
+		if typeof(requis) == "string" and not estAchete(requis) then
+			bouton.Parent = nil -- caché pour l'instant
+
+			local connexion
+			connexion = dossierAchats.ChildAdded:Connect(function(objetAchete)
+				if objetAchete.Name == requis then
+					connexion:Disconnect()
+					bouton.Parent = dossierBoutons -- le bouton apparaît
+				end
+			end)
+		end
 	end
 end
