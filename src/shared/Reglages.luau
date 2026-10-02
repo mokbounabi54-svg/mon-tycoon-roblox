@@ -112,12 +112,12 @@ Reglages.Types = {
 	Menthe = {
 		ValeurDepart = 80,
 		Machines = { "Cuiseur2", "Mouleur2", "Emballeuse2" },
-		Couleur = Color3.fromHex("33D1A3"),
+		Couleur = Color3.fromHex("2FCFA3"),
 	},
 	Or = {
 		ValeurDepart = 1600,
 		Machines = { "Cuiseur3", "Mouleur3", "Emballeuse3" },
-		Couleur = Color3.fromHex("FFC125"),
+		Couleur = Color3.fromHex("FFC21F"),
 	},
 }
 

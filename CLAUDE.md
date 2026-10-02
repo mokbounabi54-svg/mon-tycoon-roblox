@@ -146,9 +146,9 @@ plus (le prix suit les machines possédées au moment de la vente). Prix pas enc
 
 Un dossier par type, un Model par étape : `ModelesBonbons/<Type>/<Etape>`, avec
 Type = `Fraise`, `Menthe`, `Or` et Etape = `Pate`, `Cuit`, `Moule`, `Emballe`.
-**Seule la Fraise est faite** (zone 1) ; Menthe et Or attendent le feu vert de l'utilisateur.
-Tant qu'un modèle manque, le bonbon garde l'**ancien rendu** (boule que les machines
-déforment avec `CouleurBonbon`, `FormeBonbon`, `MatiereBonbon`) : c'est le cas des zones 2 et 3.
+**Les 3 types sont faits** (Fraise : 2026-10-02 ; Menthe et Or : mission autonome « nuit-auto »,
+pas encore vus par l'utilisateur). Si un modèle manque, le bonbon garde l'**ancien rendu**
+(boule que les machines déforment avec `CouleurBonbon`, `FormeBonbon`, `MatiereBonbon`).
 
 - Le mélangeur choisit le type (attribut `TypeBonbon`, ex : `"Fraise"` sur `Melangeur1A`
   et `Melangeur1B`) et copie `<Type>/Pate`. Chaque cuiseur, mouleur et emballeuse a un
@@ -174,6 +174,14 @@ Pate : boule + petit bout de pâte + reflet. Cuit : boule en Plastic (Reflectanc
 Moule : cœur à plat (2 disques + un carré tourné de 45°, épaisseur 0,45) + 2 pépins.
 Emballe : cylindre couché (1,1 × 0,7) + 2 bouts de papier inclinés à 30° + 2 anneaux.
 Testé : 80 bonbons Fraise à l'écran, 60 FPS côté serveur et côté écran, aucun bonbon tombé ni bloqué.
+
+Menthe (corps `#2FCFA3`, reflets `#9BF3DA`, papier `#E4FFF6`) : Pate, Cuit et Emballe comme la
+Fraise ; Moule = pastille à plat (disque Ø 1,05 × 0,45) + 3 rayures blanches + reflet.
+Or (corps `#FFC21F`, reflets `#FFE585`, papier `#FFF5CC`) : Moule = étoile à plat de 5 branches
+(blocs 0,27 × 0,45 × 0,6 partant du centre, toutes `Teinte`), la 1re branche vers -Z.
+Testé (3 types, 80 bonbons, mélangeurs accélérés) : 60 FPS serveur, aucun bonbon tombé ni
+bloqué, teinte de rareté seulement sur les pièces `Teinte`. FPS écran non mesuré (rendu de
+Studio arrêté pendant le test).
 
 ## Rareté des bonbons
 
@@ -292,8 +300,8 @@ test, mise à jour de `CLAUDE.md` et `IDEES.md`, liste de vérifications pour l'
 puis **attendre son « commit »** avant la suivante.
 
 - [x] A. Rareté (ci-dessus).
-- [ ] Modèles de bonbons : Fraise faite ; **Menthe et Or : attendre le feu vert**
-  (`TypeBonbon` = `Menthe` / `Or` est déjà posé sur les mélangeurs des zones 2 et 3).
+- [x] Modèles de bonbons : Fraise, Menthe et Or (Menthe et Or faits pendant « nuit-auto »,
+  à valider visuellement par l'utilisateur).
 - [x] B. Inventaire (ci-dessus) — en attente du « commit » de l'utilisateur.
 - [ ] C. Carnet : combinaisons type + rareté découvertes, grille, compteur, « Nouveau ! ».
 - [ ] D. Sorcière : 3 bonbons de même rareté (types mélangés possibles, le résultat prend
