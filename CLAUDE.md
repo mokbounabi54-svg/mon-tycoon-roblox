@@ -93,14 +93,14 @@ en (ligne + 10, 0.3, -41). L'achat `ZoneN` est un Model qui contient `MelangeurN
 | Emballeuse2 | Mouleur2 | 150 000 | ×2,5 | 440 $/s |
 | Melangeur2B | Emballeuse2 | 400 000 | 2e mélangeur | 840 $/s |
 | Zone3 | Melangeur2B | 900 000 | chaîne de base, pâte de 1 600 $ / 2 s | 1 640 $/s |
-| Cuiseur3 | Zone3 | 2 000 000 | ×2 | 2 440 $/s |
-| Mouleur3 | Cuiseur3 | 4 500 000 | ×2 | 4 040 $/s |
-| Emballeuse3 | Mouleur3 | 10 000 000 | ×2,5 | 8 840 $/s |
-| Melangeur3B | Emballeuse3 | 25 000 000 | 2e mélangeur | 16 840 $/s |
+| Cuiseur3 | Zone3 | 800 000 | ×2 | 2 440 $/s |
+| Mouleur3 | Cuiseur3 | 1 600 000 | ×2 | 4 040 $/s |
+| Emballeuse3 | Mouleur3 | 3 000 000 | ×2,5 | 8 840 $/s |
+| Melangeur3B | Emballeuse3 | 6 000 000 | 2e mélangeur | 16 840 $/s |
 
-Durée de jeu calculée avec ces prix (sans temps de marche) : ≈ 3 h 30 (zone 1 ≈ 7 min,
-zone 2 ≈ 1 h 03, zone 3 ≈ 2 h 20), et non 1 h 35 comme visé dans le plan : les prix de la
-zone 3 sont à revoir si on veut tenir cette durée. Avec toute l'usine, environ 50 bonbons
+Durée de jeu calculée avec ces prix (sans temps de marche) : ≈ 1 h 53 (zone 1 ≈ 7 min,
+zone 2 + achat de Zone3 ≈ 1 h 03, reste de la zone 3 ≈ 43 min). Les prix de la zone 3 ont
+été baissés le 2026-10-02 (avant : 2 M / 4,5 M / 10 M / 25 M, soit ≈ 3 h 30). Avec toute l'usine, environ 50 bonbons
 sont en jeu en même temps (limite : 80).
 
 ## Conventions
@@ -130,6 +130,7 @@ sont en jeu en même temps (limite : 80).
 
 ## Reste à faire
 
-1. **Équilibrage** : ajuster les prix (surtout zone 3) pour se rapprocher d'1 h 35.
+1. **Équilibrage** (optionnel) : la durée est de ≈ 1 h 53 ; pour viser 1 h 35, il faudrait
+   surtout baisser Zone3 (900 000) et les prix de la zone 2.
 2. **Monétisation** : Game Passes et/ou Developer Products (par exemple multiplicateur
    d'argent, achat de monnaie).
