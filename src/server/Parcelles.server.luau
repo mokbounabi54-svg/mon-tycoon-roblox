@@ -90,6 +90,10 @@ local function sauvegarderJoueur(joueur)
 	if usine == nil or not peutSauvegarder[joueur] then
 		return
 	end
+	if Sauvegarde.modeTest() then
+		print("Mode test : la sauvegarde de " .. joueur.Name .. " n'est pas écrite")
+		return
+	end
 	local donnees = lireDonnees(joueur, usine)
 	if donnees then
 		task.spawn(enregistrer, joueur, donnees)

@@ -15,6 +15,8 @@
 -- réessaie plusieurs fois avant d'abandonner.
 
 local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 
 local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
@@ -124,9 +126,16 @@ function Sauvegarde.charger(userId)
 	return true, donnees
 end
 
+-- Mode test (seulement dans Studio) : si ServerStorage a l'attribut
+-- "TestSansSauvegarde" à true, les sauvegardes sont lues mais jamais écrites.
+-- Pratique pour tester avec de l'argent ou des achats sans abîmer sa vraie partie.
+function Sauvegarde.modeTest()
+	return RunService:IsStudio() and ServerStorage:GetAttribute("TestSansSauvegarde") == true
+end
+
 -- Enregistre les données d'un joueur. Renvoie true si ça a marché.
 function Sauvegarde.enregistrer(userId, donnees)
-	if dataStore == nil then
+	if dataStore == nil or Sauvegarde.modeTest() then
 		return false
 	end
 

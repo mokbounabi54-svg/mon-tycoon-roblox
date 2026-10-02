@@ -4,7 +4,8 @@
 -- deux pièces au nom précis : tout le reste est de la décoration, que tu peux
 -- remplacer par tes propres modèles 3D sans rien casser.
 --
---   Role = "Melangeur"      crée des bonbons (de la pâte) à intervalle régulier
+--   Role = "Melangeur"      crée des bonbons (de la pâte) à intervalle régulier ;
+--                           chaque bonbon tire sa rareté à ce moment-là (voir Rarete)
 --     attributs : ValeurDepart (nombre), Intervalle (secondes)
 --     pièce     : "Sortie" = l'endroit où la pâte apparaît (juste au-dessus du tapis)
 --
@@ -29,6 +30,8 @@
 local Debris = game:GetService("Debris")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
+
+local Rarete = require(script.Parent:WaitForChild("Rarete"))
 
 local MAX_BONBONS_PAR_USINE = 80 -- au-delà, les mélangeurs attendent (pour ne pas faire ramer le jeu)
 local DUREE_DE_VIE_BONBON = 30 -- un bonbon tombé du tapis disparaît au bout de ce temps
@@ -86,7 +89,7 @@ local function estUnBonbonDe(usine, piece)
 	return piece.Name == "Bonbon" and typeof(piece:GetAttribute("Valeur")) == "number" and piece:IsDescendantOf(usine)
 end
 
-local function creerBonbon(dossierBonbons, sortie, valeur)
+local function creerBonbon(usine, dossierBonbons, sortie, valeur)
 	local bonbon = Instance.new("Part")
 	bonbon.Name = "Bonbon"
 	bonbon.Shape = Enum.PartType.Ball
@@ -97,6 +100,10 @@ local function creerBonbon(dossierBonbons, sortie, valeur)
 	bonbon.Position = sortie.Position - Vector3.new(0, sortie.Size.Y / 2 + 0.6, 0)
 	bonbon:SetAttribute("Valeur", valeur)
 	bonbon.Parent = dossierBonbons
+
+	-- Tirage de la rareté (sur le serveur) : elle multiplie la valeur et change l'apparence
+	local proprietaire = Players:GetPlayerByUserId(usine:GetAttribute("Proprietaire") or 0)
+	Rarete.appliquer(bonbon, Rarete.tirer(proprietaire), proprietaire)
 
 	-- C'est le serveur qui calcule la physique du bonbon (pas l'ordinateur du joueur) :
 	-- plus fluide pour tout le monde, et impossible de tricher en le déplaçant.
@@ -117,7 +124,7 @@ local function demarrerMelangeur(usine, dossierBonbons, machine)
 	task.spawn(function()
 		while machine.Parent ~= nil do
 			if #dossierBonbons:GetChildren() < MAX_BONBONS_PAR_USINE then
-				creerBonbon(dossierBonbons, sortie, valeur)
+				creerBonbon(usine, dossierBonbons, sortie, valeur)
 			end
 			task.wait(intervalle)
 		end
@@ -164,13 +171,16 @@ local function demarrerTransformation(usine, machine)
 		piece:SetAttribute(etape, true)
 		piece:SetAttribute("Valeur", piece:GetAttribute("Valeur") * multiplicateur)
 
-		if typeof(couleur) == "Color3" then
+		-- La couleur et la matière d'une rareté passent avant celles de la machine :
+		-- seul un bonbon Commun prend les couleurs de la chaîne.
+		local rarete = Rarete.infos(piece:GetAttribute("Rarete"))
+		if typeof(couleur) == "Color3" and rarete.Couleur == nil then
 			piece.Color = couleur
 		end
 		if forme then
 			piece.Shape = forme
 		end
-		if matiere then
+		if matiere and rarete.Matiere == nil then
 			piece.Material = matiere
 		end
 	end)
