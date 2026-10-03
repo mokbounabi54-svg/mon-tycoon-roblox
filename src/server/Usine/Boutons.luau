@@ -86,11 +86,11 @@ return function(usine, proprietaire, achatsDejaFaits)
 		ajouterPanneau(bouton, prix)
 
 		local couleurNormale = bouton.Color
-		local achete = false
 		local enAttente = false -- évite que le bouton clignote en boucle
 
 		bouton.Touched:Connect(function(objetQuiTouche)
-			if achete or enAttente then
+			-- estAchete : aussi vrai si l'achat a été fait par le panneau de debug
+			if estAchete(objet.Name) or enAttente then
 				return
 			end
 
@@ -115,7 +115,6 @@ return function(usine, proprietaire, achatsDejaFaits)
 				return
 			end
 
-			achete = true
 			argent.Value -= prix
 			poserAchat(objet)
 			bouton:Destroy()
@@ -165,9 +164,30 @@ return function(usine, proprietaire, achatsDejaFaits)
 			connexion = dossierAchats.ChildAdded:Connect(function(objetAchete)
 				if objetAchete.Name == requis then
 					connexion:Disconnect()
-					bouton.Parent = dossierBoutons -- le bouton apparaît
+					-- Sauf si l'objet a déjà été posé sans payer (panneau de debug) :
+					-- son bouton est alors détruit
+					if not estAchete(bouton.Name) then
+						bouton.Parent = dossierBoutons -- le bouton apparaît
+					end
 				end
 			end)
 		end
+	end
+
+	-- Renvoie une fonction qui pose un achat SANS PAYER (utilisée seulement par le
+	-- panneau de debug, dans Studio). Renvoie true si l'objet vient d'être posé.
+	return function(nom)
+		local infos = nil
+		for _, restant in boutonsRestants do
+			if restant.bouton.Name == nom then
+				infos = restant
+			end
+		end
+		if infos == nil or estAchete(nom) then
+			return false
+		end
+		poserAchat(infos.objet)
+		infos.bouton:Destroy()
+		return true
 	end
 end

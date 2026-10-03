@@ -228,6 +228,46 @@ function Inventaire.ajouter(joueur, cle)
 	return true
 end
 
+--------------------------------------------------------------------------------
+-- Pour le panneau de debug (module PanneauDebug, seulement dans Studio)
+--------------------------------------------------------------------------------
+
+-- Remplit l'inventaire jusqu'à la capacité en ajoutant 1 bonbon à tour de rôle
+-- dans chaque pile de "cles". Renvoie le nombre de bonbons ajoutés.
+function Inventaire.remplir(joueur, cles)
+	local etat = etats[joueur]
+	if etat == nil or #cles == 0 then
+		return 0
+	end
+	local ajoutes = 0
+	local numero = 1
+	while compterBonbons(etat.piles) < REGLAGES.Capacite do
+		local cle = cles[numero]
+		if lireCle(cle) then
+			etat.piles[cle] = (etat.piles[cle] or 0) + 1
+			ajoutes += 1
+		end
+		numero = numero % #cles + 1
+		if ajoutes == 0 and numero == 1 then
+			break -- aucune clé valable : on évite de tourner en rond
+		end
+	end
+	envoyer(joueur)
+	return ajoutes
+end
+
+-- Vide l'inventaire sans rien vendre. Renvoie le nombre de bonbons retirés.
+function Inventaire.vider(joueur)
+	local etat = etats[joueur]
+	if etat == nil then
+		return 0
+	end
+	local retires = compterBonbons(etat.piles)
+	table.clear(etat.piles)
+	envoyer(joueur)
+	return retires
+end
+
 -- Une demande du joueur est acceptée si son inventaire existe et s'il n'en
 -- envoie pas trop vite (anti-spam). Renvoie son état, ou nil.
 local function accepterDemande(joueur)

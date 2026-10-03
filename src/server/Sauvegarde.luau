@@ -27,6 +27,7 @@ local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
+local ModeDebug = require(script.Parent:WaitForChild("ModeDebug"))
 
 local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
@@ -70,19 +71,27 @@ end
 -- toutes les lectures et écritures vont dans ce DataStore-là au lieu du vrai.
 -- On peut ainsi tester sauvegarde, rechargement et migration sans toucher aux vraies parties.
 -- Dans le jeu publié, RunService:IsStudio() vaut false : l'attribut est ignoré.
+-- En mode debug (voir ModeDebug), c'est TOUJOURS le DataStore de test.
+-- Renvoie le DataStore et son nom.
 local function choisirDataStore()
 	local nomTest = ServerStorage:GetAttribute("DataStoreTest")
+	if ModeDebug.actif then
+		nomTest = ModeDebug.nomDataStore
+	end
 	if RunService:IsStudio() and typeof(nomTest) == "string" and nomTest ~= "" then
 		local ok, storeTest = pcall(function()
 			return DataStoreService:GetDataStore(nomTest)
 		end)
 		if ok then
-			return storeTest
+			return storeTest, nomTest
 		end
 		warn("DataStore de test '" .. nomTest .. "' indisponible : " .. tostring(storeTest))
-		return nil
+		return nil, nil
 	end
-	return dataStore
+	if ModeDebug.actif then
+		return nil, nil -- ne devrait jamais arriver : en mode debug, on ne touche pas au vrai DataStore
+	end
+	return dataStore, NOM_DATASTORE
 end
 
 -- Appelle "action" jusqu'à NOMBRE_ESSAIS fois, tant qu'elle échoue.
@@ -214,8 +223,13 @@ end
 
 -- Enregistre les données d'un joueur. Renvoie true si ça a marché.
 function Sauvegarde.enregistrer(userId, donnees)
-	local store = choisirDataStore()
+	local store, nomStore = choisirDataStore()
 	if store == nil or Sauvegarde.modeTest() then
+		return false
+	end
+	-- Dernier verrou : en mode debug, jamais d'écriture dans un vrai DataStore des joueurs
+	if ModeDebug.actif and (nomStore == NOM_DATASTORE or ModeDebug.estInterdit(nomStore)) then
+		warn("Mode debug : écriture dans '" .. tostring(nomStore) .. "' refusée")
 		return false
 	end
 

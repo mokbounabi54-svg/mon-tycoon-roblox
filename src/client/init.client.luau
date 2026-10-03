@@ -9,3 +9,4 @@ task.spawn(require(script:WaitForChild("Inventaire")).demarrer)
 task.spawn(require(script:WaitForChild("Carnet")).demarrer)
 task.spawn(require(script:WaitForChild("Sorciere")).demarrer)
 task.spawn(require(script:WaitForChild("Tutoriel")))
+task.spawn(require(script:WaitForChild("PanneauDebug"))) -- seulement dans Studio, en mode debug

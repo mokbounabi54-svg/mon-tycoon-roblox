@@ -357,6 +357,19 @@ rotation autour de la verticale seulement pour que le devant de la Base regarde 
 - Pour relire une sauvegarde juste après l'avoir écrite, utiliser `GetAsync` avec
   `DataStoreGetOptions.UseCache = false` : sinon Roblox renvoie une copie en cache vieille de
   quelques secondes (fausse alerte vue pendant les tests de B).
+- **Panneau de debug** (seulement dans Studio) : cocher l'attribut `PanneauDebug = true` sur
+  `ServerStorage` en mode édition, puis jouer. `server/ModeDebug.luau` décide **une seule fois
+  au démarrage** : actif si `RunService:IsStudio()` ET l'attribut. Actif → toutes les
+  sauvegardes (lecture ET écriture) vont dans `DataStoreTest` ou, sinon, `Test_Debug`
+  (refusé si ce nom est `Joueurs_v2`/`Joueurs_v1` ; dernier verrou dans
+  `Sauvegarde.enregistrer`). `server/PanneauDebug.luau` ne crée le canal `Debug`
+  (écran → serveur : `(action, valeur)`) que si actif, et pose l'attribut `PanneauDebug`
+  (nom du DataStore) sur `ReplicatedStorage`. Actions : `Argent` (1 000 / 100 000 / 10 M),
+  `Zone` (Zone2/Zone3 sans payer, via la fonction renvoyée par `Boutons`), `Rarete`
+  (rareté du prochain bonbon : `Rarete.forcerProchaine`), `Inventaire` (`Remplir` : 15 piles
+  Commun → Légendaire jusqu'à 50 ; `Vider`), `Sorciere` (`Reussite`/`Echec` de la prochaine
+  transformation : `Sorciere.imposerResultat`). Écran : `client/PanneauDebug.luau`, bouton
+  « Debug » en bas à droite. Testé le 2026-10-03 : vraie sauvegarde inchangée.
 - Un module requis depuis l'outil MCP n'est **pas** le même que celui des scripts du jeu :
   modifier `Reglages` depuis MCP ne change pas l'usine du joueur. Côté écran, on peut
   écouter `InventaireMaj` et envoyer des demandes depuis MCP pour tester le serveur.

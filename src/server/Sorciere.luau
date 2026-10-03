@@ -18,6 +18,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
 
 local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
 local Remotes = require(script.Parent:WaitForChild("Remotes"))
@@ -141,6 +142,17 @@ function Sorciere.arreter(joueur)
 	etats[joueur] = nil
 end
 
+-- Panneau de debug (seulement dans Studio) : impose le résultat de la PROCHAINE
+-- transformation du joueur (true = réussite, false = échec). Renvoie true si c'est noté.
+function Sorciere.imposerResultat(joueur, reussite)
+	local etat = etats[joueur]
+	if etat == nil or not RunService:IsStudio() or typeof(reussite) ~= "boolean" then
+		return false
+	end
+	etat.resultatImpose = reussite
+	return true
+end
+
 -- Ce qu'il faut sauvegarder : { [rareté donnée] = échecs de suite }
 function Sorciere.lire(joueur)
 	local etat = etats[joueur]
@@ -221,6 +233,12 @@ muter.OnServerEvent:Connect(function(joueur, cles)
 	local echecs = etat.pitie[rareteDonnee] or 0
 	local garantie = echecs >= REGLAGES.EchecsAvantGarantie
 	local reussi = garantie or aleatoire:NextNumber() * 100 < (REGLAGES.Taux[rareteVisee] or 0)
+	-- Panneau de debug (seulement dans Studio) : résultat imposé, utilisé une seule fois
+	if etat.resultatImpose ~= nil and RunService:IsStudio() then
+		reussi = etat.resultatImpose
+		garantie = false
+		etat.resultatImpose = nil
+	end
 
 	local typeObtenu, rareteObtenue
 	if reussi then

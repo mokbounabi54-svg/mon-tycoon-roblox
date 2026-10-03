@@ -91,10 +91,35 @@ local function tirerRang(joueur)
 	return 1 -- Commun : le reste
 end
 
+-- Panneau de debug (seulement dans Studio) : la rareté imposée au PROCHAIN bonbon
+-- de chaque joueur. prochaineForcee[joueur] = rang ; effacée dès qu'elle a servi.
+local prochaineForcee = {}
+
+-- Impose la rareté du prochain bonbon du joueur (nom de rareté). Ne marche que dans Studio.
+-- Renvoie true si c'est noté.
+function Rarete.forcerProchaine(joueur, nom)
+	if not RunService:IsStudio() or rangs[nom] == nil then
+		return false
+	end
+	prochaineForcee[joueur] = rangs[nom]
+	return true
+end
+
 -- Choisit la rareté d'un nouveau bonbon du joueur (peut être nil si le joueur est parti).
 -- Renvoie le rang. Met à jour le compteur de pitié du joueur.
 function Rarete.tirer(joueur)
 	local rang = tirerRang(joueur)
+
+	-- Panneau de debug : la rareté imposée par le panneau passe avant tout (même la pitié)
+	local imposee = joueur and prochaineForcee[joueur]
+	if imposee and RunService:IsStudio() then
+		prochaineForcee[joueur] = nil
+		rang = imposee
+		if rangPitie then
+			joueur:SetAttribute("CompteurPitie", if rang >= rangPitie then 0 else (joueur:GetAttribute("CompteurPitie") or 0) + 1)
+		end
+		return rang
+	end
 
 	-- Réglage de test (seulement dans Studio) : toujours la même rareté
 	local forcee = Reglages.Test.RareteForcee

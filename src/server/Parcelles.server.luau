@@ -17,6 +17,7 @@ local Sauvegarde = require(script.Parent:WaitForChild("Sauvegarde"))
 local Inventaire = require(script.Parent:WaitForChild("Inventaire"))
 local Carnet = require(script.Parent:WaitForChild("Carnet"))
 local Sorciere = require(script.Parent:WaitForChild("Sorciere"))
+local PanneauDebug = require(script.Parent:WaitForChild("PanneauDebug")) -- seulement dans Studio
 local Usine = script.Parent:WaitForChild("Usine")
 local demarrerCaisse = require(Usine.Caisse)
 local demarrerBoutons = require(Usine.Boutons)
@@ -191,7 +192,8 @@ local function quandUnJoueurArrive(joueur)
 	Sorciere.demarrer(joueur, usine, donnees) -- pose la sorcière près de l'entrée
 	demarrerCaisse(usine, joueur)
 	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
-	demarrerBoutons(usine, joueur, donnees.Achats)
+	local acheterSansPayer = demarrerBoutons(usine, joueur, donnees.Achats)
+	PanneauDebug.brancher(joueur, acheterSansPayer) -- ne fait rien hors de Studio
 
 	joueur.CharacterAdded:Connect(function(personnage)
 		teleporterDansUsine(joueur, personnage)
