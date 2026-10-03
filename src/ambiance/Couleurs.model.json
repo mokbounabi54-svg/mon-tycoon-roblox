@@ -1,0 +1,18 @@
+// CORRECTION DES COULEURS (ColorCorrectionEffect) : rend toute l'image un peu
+// plus saturée et un peu plus chaude, comme un filtre photo.
+// Coût : très faible (une seule retouche de l'image entière à chaque image).
+// Elle ne change PAS les interfaces (inventaire, boutons...), seulement le monde 3D.
+{
+  "className": "ColorCorrectionEffect",
+  "properties": {
+    "Enabled": true,
+    // Saturation : + = couleurs plus vives (0 = normal). Au-delà de 0,25, ça « bave ».
+    "Saturation": 0.2,
+    // Contraste : + = noirs plus noirs, blancs plus blancs
+    "Contrast": 0.1,
+    // Luminosité (0 = normal)
+    "Brightness": 0,
+    // Teinte de toute l'image : blanc très légèrement chaud
+    "TintColor": [1, 0.984, 0.965]   // #FFFBF6
+  }
+}

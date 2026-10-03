@@ -40,7 +40,9 @@ achète de nouvelles machines grâce à des boutons posés au sol.
 
 - `Leaderstats.server.luau` : crée la valeur `Argent` de chaque joueur.
 - `Parcelles.server.luau` : **une parcelle de 120 × 120 par joueur** (6 emplacements, liste
-  `EMPLACEMENTS`, espacés de 130). Charge la sauvegarde, copie `ModeleUsine` sur un emplacement
+  `EMPLACEMENTS` : 2 rangées de 3 à Z = ±115, X = -140 / 0 / 140, entrées vers le hub au
+  centre ; avant le 2026-10-03 : Z = ±80, espacés de 130). Le décor est placé d'après ces
+  positions (voir « Décor de la carte »). Charge la sauvegarde, copie `ModeleUsine` sur un emplacement
   libre, démarre la caisse, la production et les boutons, fait apparaître le joueur sur
   `Apparition`. Sauvegarde au départ, toutes les 2 minutes et à l'arrêt du serveur (`BindToClose`).
 - `Sauvegarde.luau` : DataStore `Joueurs_v2` (`Joueurs_v1` = ancien, abandonné le 2026-10-02,
@@ -336,6 +338,64 @@ rotation autour de la verticale seulement pour que le devant de la Base regarde 
   (clic = fenêtre de choix des piles de même rareté ; clic sur un emplacement rempli = le
   vider), chaudron animé, case résultat, palier + taux + barre, ligne de pitié, « Muter ».
   Ordinateur 1080 × 628, téléphone 700 × 334.
+
+## Décor de la carte
+
+- **`Workspace/Decor` et `ServerStorage/ModelesDecor` n'existent QUE dans Studio** (comme
+  `ModeleUsine`) : ni dans `default.project.json`, ni dans Git. Le plan complet (noms,
+  positions, tailles, couleurs) est sauvegardé dans **`docs/decor-carte.md`** : c'est lui qu'il
+  faut mettre à jour quand le décor change.
+- 345 pièces en 4 dossiers : `1_SolEtBordure` (herbe, 34 falaises, 4 murs invisibles),
+  `2_Hub` (place, fontaine de chocolat, chemins de caramel, Départ), `3_Decor` (sucettes,
+  arbres barbe à papa, champignons, lampadaires : copies des modèles de `ModelesDecor`),
+  `4_EnveloppeParcelles` (bordure rose et panneau « Parcelle N » sur chaque emplacement).
+- Règle : tout est ancré et sans collision (CanCollide, CanQuery, CanTouch false), sauf
+  `SolHerbe` et les murs. Le décor ne va jamais sur une parcelle ni sur un chemin.
+- Le `SpawnLocation` a été déplacé au Départ (-235, 0,66, 0) ; la fontaine est au centre.
+- `Decor/2_Hub/Fontaine` : la fontaine de chocolat **importée par l'utilisateur** (.glb dans
+  `assets/modeles/fontaine/`), 121 MeshParts, 9 608 triangles, échelle 9 (49,5 de large),
+  couleurs remises à la main (l'import les perd, comme pour la sorcière). Collision : marches,
+  fond, mur et bord du bassin seulement. Import intact : `ServerStorage/Imports/FontaineChocolat`.
+  Les imports .glb arrivent dans le Workspace sous le nom `AuxScene`.
+- `Decor/Statue` : statue de l'avatar de l'utilisateur (17 MeshParts en marbre, échelle 3,
+  sans Humanoid ni collision) sur son piédestal à plaque (seule collision), dans le coin
+  sud-ouest (-235, _, -172), tournée vers le hub (visible droit devant à l'apparition : le
+  `SpawnLocation` regarde vers -Z). Original intact (avec Humanoid) : `ServerStorage/Statue`,
+  à ne pas supprimer.
+- `ServerStorage/Decor_Anciens` : éléments retirés du décor, gardés (ancienne fontaine, doublon
+  statue + piédestal). Détails dans `docs/decor-carte.md`.
+- Modèles de base : pour un modèle sans PrimaryPart, le point de référence (`WorldPivot`)
+  est au sol. Attention : avec une PrimaryPart, `PivotTo` prend le centre de cette pièce
+  (les premières falaises s'étaient enfoncées à moitié dans le sol).
+- Mesures (émulateur petit téléphone 666 × 374, 6 parcelles, 80 bonbons) : 60 FPS avec les
+  4 zones ; temps de calcul de l'affichage +0,1 à +0,2 ms avec le décor.
+- **Mesurer le FPS écran par MCP** : Studio bride l'écran à 15 FPS quand sa fenêtre n'est
+  pas au premier plan, et le focus se perd souvent entre deux appels. Mesurer dans le même
+  appel, juste après un lancement de partie, et se fier aussi à `Stats.RenderCPUFrameTime`.
+
+## Ambiance (éclairage, ciel, brume)
+
+- **Tous les réglages sont dans `src/ambiance/`**, qui EST le service Lighting
+  (`default.project.json` : `"Lighting": { "$path": "src/ambiance" }`). Fichiers JSON avec
+  commentaires en français (Rojo 7.7 les accepte) : `init.meta.json` (lumière générale,
+  `className` Lighting), `Ciel.model.json` (Sky, l'ancien « Obby Sky » à nuages dessinés),
+  `Brume.model.json` (Atmosphere), `Couleurs.model.json` (ColorCorrection, saturation +0,2).
+  Pas de Bloom, DepthOfField ni SunRays (retirés : coûteux, et le Bloom délavait les raretés Neon).
+- **`Technology` n'est PAS dans les fichiers** : Rojo n'arrive pas à la changer en direct
+  (il tente de remplacer tout le service Lighting et la synchro de Lighting se bloque jusqu'à
+  la reconnexion de Rojo). Elle se règle à la main dans Studio. Les scripts (MCP compris) ne
+  peuvent même pas la lire.
+- Ancienne ambiance (2 ciels, Atmosphere grise, Bloom 1, DepthOfField, SunRays) gardée dans
+  `ServerStorage/AmbianceAncienne` (réglages de Lighting en attributs).
+- Leçons des tests (2026-10-03) : `Brightness` > 2,2 ou `OutdoorAmbient` très clair délavent tout ;
+  `ColorShift_Top` trop chaud fait tirer l'Épique (violet Neon) vers le rose du Mythique ;
+  plusieurs Légendaires/Mythiques regroupés (lumières de rareté) blanchissent le sol autour
+  (déjà le cas avant, c'est un réglage de rareté, pas d'ambiance).
+- Mesures : temps de calcul de l'affichage identique avant / après (≈ 4,3 ms par image,
+  80 bonbons) ; serveur 60 FPS. Le FPS écran de Studio était bridé à 15 (fenêtre pas au premier
+  plan) et l'émulateur d'appareils ne se pilote pas par script : test téléphone à faire à la main.
+- Captures d'écran par MCP : passer par la caméra du joueur (`BindToRenderStep`), car
+  `screen_capture` avec `camera_position` rend une image blanche avec cette ambiance.
 
 ## Tester sans abîmer la vraie sauvegarde
 

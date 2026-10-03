@@ -1,0 +1,63 @@
+// ============================================================================
+// AMBIANCE DU JEU : ce dossier EST le service Lighting de Roblox (voir
+// default.project.json). Rojo recopie ces réglages dans Studio dès qu'on enregistre.
+// TOUS les réglages d'ambiance sont ici, un fichier par effet :
+//   init.meta.json      -> la lumière générale (ce fichier)
+//   Ciel.model.json     -> le ciel (Sky)
+//   Brume.model.json    -> la brume au loin (Atmosphere)
+//   Couleurs.model.json -> la correction des couleurs (ColorCorrection)
+//
+// Attention : ce qu'on change dans Studio (fenêtre Propriétés) n'est PAS recopié
+// ici. Pour garder un réglage, il faut l'écrire dans ces fichiers.
+//
+// Les couleurs s'écrivent [rouge, vert, bleu] entre 0 et 1.
+// Pour passer d'un code #RRVVBB à ces nombres : chaque paire / 255
+// (ex : #FF = 255 -> 1 ; #80 = 128 -> 0,5). Le code d'origine est en commentaire.
+//
+// Règle : les couleurs des raretés ne se touchent pas. Si une rareté devient
+// moins lisible, on corrige l'éclairage ici.
+// ============================================================================
+{
+  "className": "Lighting",
+  "properties": {
+    // La TECHNOLOGIE d'éclairage (Technology) n'est PAS ici : Rojo ne sait pas la
+    // changer en direct (il plante en essayant). Elle se règle à la main dans Studio :
+    // Lighting > Technology. Du plus léger au plus lourd :
+    //   "Voxel"     = la plus légère (idéale téléphone), ombres douces et floues ;
+    //   "ShadowMap" = ombres plus nettes (voir ShadowSoftness), coût moyen ;
+    //   "Future"    = la plus lourde, déconseillée pour ce jeu.
+
+    // Les ombres : activées. ShadowSoftness (0 = net, 1 = flou) ne compte qu'en ShadowMap.
+    "GlobalShadows": true,
+    "ShadowSoftness": 0.6,
+
+    // Force du soleil. Plus haut = plus clair et plus contrasté.
+    // Au-dessus de 2,2 les couleurs pâlissent (sol presque blanc, Rare délavé).
+    "Brightness": 2,
+
+    // Heure (14 = 14 h, soleil assez haut : ombres courtes qui ne cachent pas les tapis)
+    "ClockTime": 14,
+    // Inclinaison du soleil (en degrés) : donne un peu de relief sur les côtés des machines
+    "GeographicLatitude": 25,
+
+    // Teinte de la lumière du soleil : chaude, à peine dorée (plus chaud = le violet
+    // de la rareté Épique tire vers le rose et se confond avec Mythique)
+    "ColorShift_Top": [1, 0.922, 0.824],          // #FFEBD2
+    // Teinte de la lumière qui « remonte » du sol (très discrète)
+    "ColorShift_Bottom": [0.227, 0.165, 0.333],   // #3A2A55
+
+    // Lumière dans les zones à l'ombre, dehors : lilas. C'est elle qui rend les
+    // ombres douces et colorées au lieu de grises et sombres.
+    "OutdoorAmbient": [0.518, 0.478, 0.62],       // #847A9E
+    // Lumière sous un toit (peu utilisée dans le jeu)
+    "Ambient": [0.353, 0.306, 0.431],             // #5A4E6E
+
+    // Lumière et reflets venant du ciel. Faibles : on garde des aplats nets et une
+    // matière lisse (SmoothPlastic) sans effet « métal ». Plus haut = tout pâlit.
+    "EnvironmentDiffuseScale": 0.25,
+    "EnvironmentSpecularScale": 0.15,
+
+    // Réglage global de l'exposition (0 = normal, + = plus clair)
+    "ExposureCompensation": 0
+  }
+}

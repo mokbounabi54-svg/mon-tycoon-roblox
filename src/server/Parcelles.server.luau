@@ -28,17 +28,21 @@ local dossierParcelles = workspace:WaitForChild("Parcelles")
 
 local INTERVALLE_SAUVEGARDE_AUTO = 120 -- secondes (2 minutes)
 
--- Les emplacements des parcelles (120 × 120) sur la carte : 3 de chaque côté du point
--- d'apparition. Les parcelles du côté "nord" sont tournées d'un demi-tour
--- pour que leur entrée regarde vers le centre.
+-- Les emplacements des parcelles (120 × 120) sur la carte : 2 rangées de 3, de part et
+-- d'autre de l'allée centrale (le hub avec la fontaine est au centre, en 0, 0, 0).
+-- Les parcelles du côté "nord" sont tournées d'un demi-tour pour que leur entrée
+-- regarde vers le hub. 140 entre deux parcelles voisines (20 studs pour le décor) ;
+-- rangées à Z = ±115 (allée de 110 studs). Le décor de Workspace/Decor est placé
+-- d'après ces positions : si on les change, il faut déplacer le décor aussi
+-- (voir docs/decor-carte.md).
 local DEMI_TOUR = CFrame.Angles(0, math.pi, 0)
 local EMPLACEMENTS = {
-	CFrame.new(-130, 0, 80),
-	CFrame.new(0, 0, 80),
-	CFrame.new(130, 0, 80),
-	CFrame.new(-130, 0, -80) * DEMI_TOUR,
-	CFrame.new(0, 0, -80) * DEMI_TOUR,
-	CFrame.new(130, 0, -80) * DEMI_TOUR,
+	CFrame.new(-140, 0, 115),
+	CFrame.new(0, 0, 115),
+	CFrame.new(140, 0, 115),
+	CFrame.new(-140, 0, -115) * DEMI_TOUR,
+	CFrame.new(0, 0, -115) * DEMI_TOUR,
+	CFrame.new(140, 0, -115) * DEMI_TOUR,
 }
 
 local occupants = {} -- occupants[numéro d'emplacement] = joueur

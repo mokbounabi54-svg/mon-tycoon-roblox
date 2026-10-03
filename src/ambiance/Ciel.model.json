@@ -1,0 +1,20 @@
+// LE CIEL (Sky) : ciel bleu clair avec des nuages dessinés, style dessin animé
+// (c'était le ciel « Obby Sky » de la place). Coût : aucun, c'est juste 6 images.
+// Pour changer de ciel : remplacer les 6 images (Skybox...) par celles d'un autre ciel.
+{
+  "className": "Sky",
+  "properties": {
+    "SkyboxBk": "rbxassetid://16573631102",
+    "SkyboxDn": "rbxassetid://16573631950",
+    "SkyboxFt": "rbxassetid://16573632795",
+    "SkyboxLf": "rbxassetid://16573633258",
+    "SkyboxRt": "rbxassetid://16573633908",
+    "SkyboxUp": "rbxassetid://16573634370",
+
+    // Soleil et lune visibles ; pas d'étoiles (on est en plein jour)
+    "CelestialBodiesShown": true,
+    "SunAngularSize": 14,
+    "MoonAngularSize": 11,
+    "StarCount": 0
+  }
+}

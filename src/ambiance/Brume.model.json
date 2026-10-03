@@ -1,0 +1,21 @@
+// LA BRUME (Atmosphere) : une légère brume bleu-lilas au loin, pour la profondeur.
+// Coût : faible (calculée avec l'éclairage, pas d'effet d'image en plus).
+// Elle ne doit pas toucher les tapis proches : si les bonbons deviennent pâles,
+// baisser Density.
+{
+  "className": "Atmosphere",
+  "properties": {
+    // Épaisseur de la brume (0 = aucune, 1 = très épaisse)
+    "Density": 0.25,
+    // Distance où elle commence (0 = tout près, 1 = très loin)
+    "Offset": 0.25,
+    // Couleur de la brume près de l'horizon : bleu ciel très clair
+    "Color": [0.839, 0.925, 1],    // #D6ECFF
+    // Couleur au loin, côté opposé au soleil : lilas « barbe à papa »
+    "Decay": [0.851, 0.702, 1],    // #D9B3FF
+    // Voile sur le ciel lui-même (0 = ciel net). Un peu, pour un ciel plus pastel.
+    "Haze": 0.4,
+    // Halo autour du soleil (0 = aucun)
+    "Glare": 0
+  }
+}
