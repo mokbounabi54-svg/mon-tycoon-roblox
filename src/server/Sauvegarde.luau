@@ -4,14 +4,19 @@
 -- les données même quand le serveur s'éteint. Chaque joueur a sa propre case,
 -- repérée par une "clé" construite avec son UserId.
 --
--- Une sauvegarde ressemble à ça (version 5) :
+-- Une sauvegarde ressemble à ça (version 6) :
 --   {
---     Version = 3, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" },
+--     Version = 6, Argent = 120, Achats = { "Cuiseur1", "Mouleur1" },
 --     Inventaire = { ["Fraise|Rare|Normal"] = 4 },   -- les piles de bonbons gardés
 --     SeuilGarde = "Peu commun",                     -- garder à partir de cette rareté
 --     CompteurPitie = 37,                            -- bonbons de suite sous Épique
 --     Carnet = { ["Fraise|Rare"] = true },           -- version 4 : combinaisons découvertes
 --     PitieSorciere = { ["Rare"] = 2 },              -- version 5 : échecs de suite par palier
+--     Ingredients = {                                -- version 6 : mode hybride
+--       Panier = { Fraise = 12 },                    --   ce que le joueur porte
+--       Reserve = { Fraise = 40 },                   --   le bac de son usine
+--       CadeauRecu = true,                           --   cadeau de départ déjà donné ?
+--     },
 --   }
 --
 -- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
@@ -33,7 +38,7 @@ local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
-local VERSION = 5
+local VERSION = 6
 
 -- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
 -- Elles n'existent plus : on rembourse leur prix au joueur.
@@ -72,26 +77,55 @@ end
 -- On peut ainsi tester sauvegarde, rechargement et migration sans toucher aux vraies parties.
 -- Dans le jeu publié, RunService:IsStudio() vaut false : l'attribut est ignoré.
 -- En mode debug (voir ModeDebug), c'est TOUJOURS le DataStore de test.
+--
+-- La décision est dans une petite fonction à part, qui reçoit « est-on dans Studio ? »
+-- en paramètre : on peut ainsi vérifier par un test que, HORS de Studio, l'attribut est
+-- ignoré (dans Studio, RunService:IsStudio() répond toujours true).
+-- Renvoie le nom du DataStore à utiliser (nil = aucun) et true si c'est un DataStore de test.
+function Sauvegarde.choisirNom(estStudio, nomTest, debugActif, nomDebug)
+	if debugActif then
+		nomTest = nomDebug
+	end
+	if estStudio and typeof(nomTest) == "string" and nomTest ~= "" then
+		return nomTest, true
+	end
+	if debugActif then
+		return nil, false -- ne devrait jamais arriver : en mode debug, on ne touche pas au vrai DataStore
+	end
+	return NOM_DATASTORE, false
+end
+
+-- Vrai si l'attribut DataStoreTest doit être signalé comme IGNORÉ (jeu publié, attribut posé).
+-- Fonction pure, comme choisirNom, pour pouvoir la tester avec un faux « pas dans Studio ».
+function Sauvegarde.attributIgnore(estStudio, nomTest)
+	return not estStudio and nomTest ~= nil
+end
+
+local avertissementDonne = false -- le warn n'est affiché qu'une fois par serveur
+
 -- Renvoie le DataStore et son nom.
 local function choisirDataStore()
+	local estStudio = RunService:IsStudio()
 	local nomTest = ServerStorage:GetAttribute("DataStoreTest")
-	if ModeDebug.actif then
-		nomTest = ModeDebug.nomDataStore
+	if Sauvegarde.attributIgnore(estStudio, nomTest) and not avertissementDonne then
+		avertissementDonne = true
+		warn("L'attribut DataStoreTest ('" .. tostring(nomTest) .. "') est posé sur ServerStorage, mais il est IGNORÉ hors de Studio : le vrai DataStore est utilisé. Retire-le du jeu.")
 	end
-	if RunService:IsStudio() and typeof(nomTest) == "string" and nomTest ~= "" then
-		local ok, storeTest = pcall(function()
-			return DataStoreService:GetDataStore(nomTest)
-		end)
-		if ok then
-			return storeTest, nomTest
-		end
-		warn("DataStore de test '" .. nomTest .. "' indisponible : " .. tostring(storeTest))
+	local nom, estTest = Sauvegarde.choisirNom(estStudio, nomTest, ModeDebug.actif, ModeDebug.nomDataStore)
+	if nom == nil then
 		return nil, nil
 	end
-	if ModeDebug.actif then
-		return nil, nil -- ne devrait jamais arriver : en mode debug, on ne touche pas au vrai DataStore
+	if not estTest then
+		return dataStore, NOM_DATASTORE
 	end
-	return dataStore, NOM_DATASTORE
+	local ok, storeTest = pcall(function()
+		return DataStoreService:GetDataStore(nom)
+	end)
+	if ok then
+		return storeTest, nom
+	end
+	warn("DataStore de test '" .. nom .. "' indisponible : " .. tostring(storeTest))
+	return nil, nil
 end
 
 -- Appelle "action" jusqu'à NOMBRE_ESSAIS fois, tant qu'elle échoue.
@@ -160,6 +194,12 @@ function Sauvegarde.migrer(userId, donnees)
 		donnees.PitieSorciere = {}
 		print("Sauvegarde de " .. userId .. " convertie en version 5 (sorcière)")
 	end
+	if version < 6 then
+		-- Version 6 : ingrédients du mode hybride. Panier et bac vides ; le cadeau de
+		-- départ n'a pas encore été donné (il le sera une fois, quand le mode est actif).
+		donnees.Ingredients = { Panier = {}, Reserve = {}, CadeauRecu = false }
+		print("Sauvegarde de " .. userId .. " convertie en version 6 (ingrédients)")
+	end
 	donnees.Version = VERSION
 end
 
@@ -169,10 +209,12 @@ end
 -- Si ça échoue, il ne faudra PAS sauvegarder ce joueur, sinon on écraserait
 -- sa vraie sauvegarde avec une partie recommencée à zéro.
 function Sauvegarde.charger(userId)
-	local store = choisirDataStore()
+	local store, nomStore = choisirDataStore()
 	if store == nil then
 		return false, nil
 	end
+	-- Dit dans la sortie quel DataStore est utilisé (vérification avant chaque test dans Studio)
+	print("Chargement de " .. userId .. " depuis le DataStore '" .. nomStore .. "'")
 
 	local reussi, donnees = essayerPlusieursFois("Chargement de " .. userId, function()
 		return store:GetAsync(cle(userId))
@@ -211,6 +253,7 @@ function Sauvegarde.charger(userId)
 	if typeof(donnees.PitieSorciere) ~= "table" then
 		donnees.PitieSorciere = {}
 	end
+	-- Version 6 : le détail (ingrédients connus, quantités, cadeau) est vérifié par Ingredients
 	return true, donnees
 end
 

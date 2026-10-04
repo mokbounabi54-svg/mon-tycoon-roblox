@@ -17,6 +17,7 @@ local Sauvegarde = require(script.Parent:WaitForChild("Sauvegarde"))
 local Inventaire = require(script.Parent:WaitForChild("Inventaire"))
 local Carnet = require(script.Parent:WaitForChild("Carnet"))
 local Sorciere = require(script.Parent:WaitForChild("Sorciere"))
+local Ingredients = require(script.Parent:WaitForChild("Ingredients")) -- mode hybride (panier et bac)
 local PanneauDebug = require(script.Parent:WaitForChild("PanneauDebug")) -- seulement dans Studio
 local Usine = script.Parent:WaitForChild("Usine")
 local demarrerCaisse = require(Usine.Caisse)
@@ -71,7 +72,8 @@ local function lireDonnees(joueur, usine)
 	local inventaire = Inventaire.lire(joueur)
 	local carnet = Carnet.lire(joueur)
 	local pitieSorciere = Sorciere.lire(joueur)
-	if argent == nil or inventaire == nil or carnet == nil or pitieSorciere == nil then
+	local ingredients = Ingredients.lire(joueur)
+	if argent == nil or inventaire == nil or carnet == nil or pitieSorciere == nil or ingredients == nil then
 		return nil
 	end
 
@@ -88,6 +90,7 @@ local function lireDonnees(joueur, usine)
 		CompteurPitie = joueur:GetAttribute("CompteurPitie") or 0,
 		Carnet = carnet,
 		PitieSorciere = pitieSorciere,
+		Ingredients = ingredients,
 	}
 end
 
@@ -164,7 +167,11 @@ local function quandUnJoueurArrive(joueur)
 		-- On le laisse jouer, mais sans jamais sauvegarder : sinon sa vraie
 		-- sauvegarde serait écrasée par cette partie recommencée à zéro.
 		warn("Impossible de charger la sauvegarde de " .. joueur.Name .. " : cette partie ne sera pas sauvegardée")
-		donnees = { Argent = 0, Achats = {}, Inventaire = {}, CompteurPitie = 0, Carnet = {}, PitieSorciere = {} }
+		-- (CadeauRecu = true : pas de cadeau dans une partie qui ne sera pas sauvegardée)
+		donnees = {
+			Argent = 0, Achats = {}, Inventaire = {}, CompteurPitie = 0, Carnet = {}, PitieSorciere = {},
+			Ingredients = { Panier = {}, Reserve = {}, CadeauRecu = true },
+		}
 	end
 
 	local numero = trouverEmplacementLibre()
@@ -193,6 +200,7 @@ local function quandUnJoueurArrive(joueur)
 	ajouterPanneauProprietaire(usine, joueur)
 	Inventaire.demarrer(joueur, usine, donnees) -- avant la production : le point de vente s'en sert
 	Carnet.demarrer(joueur, donnees) -- avant la production : les mélangeurs s'en servent
+	Ingredients.demarrer(joueur, donnees) -- avant la production : les mélangeurs du mode hybride s'en servent
 	Sorciere.demarrer(joueur, usine, donnees) -- pose la sorcière près de l'entrée
 	demarrerCaisse(usine, joueur)
 	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
@@ -222,6 +230,7 @@ local function quandUnJoueurPart(joueur)
 	Inventaire.arreter(joueur) -- après la sauvegarde, qui a lu l'inventaire
 	Carnet.arreter(joueur)
 	Sorciere.arreter(joueur)
+	Ingredients.arreter(joueur)
 
 	for numero, occupant in occupants do
 		if occupant == joueur then

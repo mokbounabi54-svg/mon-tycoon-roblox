@@ -186,6 +186,58 @@ Reglages.Sorciere = {
 }
 
 --------------------------------------------------------------------------------
+-- MODE HYBRIDE (récolte d'ingrédients dans le monde + usine)
+-- Plan complet et calculs : docs/design_hybride.md
+--------------------------------------------------------------------------------
+
+-- L'interrupteur général. false = le jeu d'avant, exactement (mêmes rythmes, mêmes prix,
+-- rien de plus à l'écran). Les ingrédients sont tout de même lus et sauvegardés, pour ne
+-- rien perdre si on éteint puis rallume le mode.
+Reglages.HYBRIDE_ACTIF = false
+
+Reglages.Hybride = {
+	-- Les mélangeurs nourris par le bac, DANS L'ORDRE où le bac les sert (règle E) :
+	--   SansFraises : rythme quand le bac est vide (1 = le rythme d'avant, 0.5 = moitié)
+	--   AvecFraises : rythme quand le bac a des fraises (chaque bonbon consomme 1 fraise)
+	Melangeurs = {
+		{ Nom = "Melangeur1A", Ingredient = "Fraise", SansFraises = 0.5, AvecFraises = 2 },
+		{ Nom = "Melangeur1B", Ingredient = "Fraise", SansFraises = 1, AvecFraises = 2 },
+	},
+
+	-- Prix des achats multipliés par ce nombre, SEULEMENT si HYBRIDE_ACTIF est vrai.
+	-- Un achat absent de la liste garde son prix (×1).
+	MultiplicateurPrix = {
+		Cuiseur1 = 1,
+		Mouleur1 = 1,
+		Emballeuse1 = 1.8,
+		Melangeur1B = 1.8,
+		Zone2 = 1.8,
+	},
+
+	-- Les ingrédients connus. Une clé absente d'ici est retirée de la sauvegarde au chargement.
+	Ingredients = {
+		Fraise = { TypeBonbon = "Fraise", Emoji = "🍓" },
+	},
+
+	CapacitePanier = 100, -- total des ingrédients qu'un joueur peut porter
+	CapaciteReserve = 200, -- fraises que le bac de l'usine peut garder (par ingrédient)
+
+	-- Cadeau donné UNE seule fois par compte, dans le bac, pour découvrir le circuit
+	-- (seulement quand le mode hybride est actif)
+	Cadeau = { Ingredient = "Fraise", Quantite = 20 },
+
+	DelaiEntreDemandes = 0.5, -- secondes minimum entre deux demandes d'un écran (anti-spam)
+
+	-- Registre des multiplicateurs qui s'empilent sur le revenu (voir docs/design_hybride.md,
+	-- section d). Chaque nouveau multiplicateur = une ligne ici + le tableau de progression refait.
+	--   Machines (zone)    : jusqu'à ×10            — branché
+	--   Rareté             : moyenne ×2,32 (≤ ×500) — branché
+	--   Fraises (rythme)   : ×0,5 à ×2              — branché si HYBRIDE_ACTIF
+	--   MultiplicateurPrix : prix ×1 à ×1,8         — branché si HYBRIDE_ACTIF
+	--   Bonus de chance    : +17 % de revenu pendant le bonus — PAS branché (fraisier doré, plus tard)
+}
+
+--------------------------------------------------------------------------------
 -- TUTORIEL (bulles pour un nouveau joueur, pendant les 2 premières minutes)
 --------------------------------------------------------------------------------
 

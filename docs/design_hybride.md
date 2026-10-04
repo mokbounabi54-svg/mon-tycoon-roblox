@@ -56,7 +56,15 @@ le jeu publié. Voici ce que je peux faire, du plus faible au plus fort :
    « est-on dans Studio ? » en paramètre. Je l'appelle avec `false` et je vérifie qu'elle renvoie
    le vrai DataStore, même avec l'attribut posé. Ça teste la règle, mais pas le vrai Roblox publié.
 3. **Test réel** (seul le jeu publié le peut) : publier sur un **lieu de test séparé** et regarder la sortie
-   du serveur. C'est une publication : **je ne la fais pas**. Elle serait à ton initiative.
+   du serveur. **Décision : aucun lieu de test n'est publié.**
+
+**Fait à l'étape 1** :
+- `Sauvegarde.choisirNom(estStudio, …)` et `Sauvegarde.attributIgnore(estStudio, nomTest)` sont des fonctions pures.
+- Dans le jeu publié, l'attribut `DataStoreTest` est **ignoré**, avec un `warn()` (une fois par serveur) s'il est posé.
+- Les deux fonctions sont testées avec un faux « je ne suis pas dans Studio ».
+
+**Cette preuve est partielle** : elle vérifie la règle écrite dans le code, mais pas le comportement du vrai
+jeu publié (dans Studio, `RunService:IsStudio()` vaut toujours `true`).
 >
 > **Légende des chiffres** : 🧮 = **calculé** (pas encore vérifié en jeu) · 📏 = **mesuré**.
 > Aujourd'hui, **tous les chiffres de ce plan sont 🧮 calculés.** Rien n'a encore été mesuré en jeu.
@@ -438,11 +446,11 @@ Reglages.Hybride = {
 
 | # | Étape | État |
 |---|---|---|
-| 0 | Branche `hybride` depuis `nuit-auto` + plan v3.1 + `tools/exporter_sauvegarde.lua` | **faite, attend « commit »** |
-| 1 | Réglages, `Ingredients.luau`, sauvegarde v6, cadeau, vérification | autorisée, après le commit de l'étape 0 |
+| 0 | Branche `hybride` depuis `nuit-auto` + plan v3.1 + `tools/exporter_sauvegarde.lua` | **faite** (`bcc82ec`) |
+| 1 | Réglages, `Ingredients.luau`, sauvegarde v6, cadeau, vérification | **faite, testée dans `Test_Hybride`, attend « commit »** |
 | 2 | Production 50 % / 200 % + règle E + `MultiplicateurPrix` (`Boutons.luau`) | autorisée, après le commit de l'étape 1 |
 | 2b | **Tests de faisabilité de l'archipel** (b.1 à b.4 ci-dessous), objets temporaires dans `Workspace/TestHybride` | **pas dans le périmètre autorisé** : à confirmer plus tard |
-| 3 | Studio : île, pont, mer, sentier, arbres, buissons, bac | **attend ta validation du plan v3** |
+| 3 | Studio : île, pont, mer, sentier, arbres, buissons, bac. **Ajouts (consigne du 2026-10-04)** : du sable de remontée **à intervalles réguliers le long de tout le pont** (des deux côtés) ; test « tomber du pont, puis remonter seul ou utiliser Rentrer », à plusieurs endroits du pont | **attend ta validation du plan v3** |
 | 4 | `Recolte.luau` (points, repousse, bac, Rentrer, barrière) | après 3 |
 | 5 | Écran (barre, Cueillir, Rentrer, 🎵, explication de la règle E, tutoriel) | après 4 |
 | 6 | Mesures, `CLAUDE.md`, `IDEES.md`, `decor-carte.md` | après 5 |
