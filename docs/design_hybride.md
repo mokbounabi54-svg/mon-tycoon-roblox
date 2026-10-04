@@ -509,7 +509,7 @@ Reglages.Hybride = {
 | 1 | Réglages, `Ingredients.luau`, sauvegarde v6, cadeau, vérification | **faite, testée dans `Test_Hybride`, attend « commit »** |
 | 2 | Production 50 % / 200 % + règle E + `MultiplicateurPrix` (`Boutons.luau`) | **faite** (mesures ci-dessous) |
 | 2b | **Tests de faisabilité de l'archipel** (b.1 à b.4 ci-dessous), objets temporaires dans `Workspace/TestHybride` | **pas dans le périmètre autorisé** : à confirmer plus tard |
-| 3 | Studio : île, pont, mer, sentier, arbres, buissons, bac. **Ajouts (consigne du 2026-10-04)** : du sable de remontée **à intervalles réguliers le long de tout le pont** (des deux côtés) ; test « tomber du pont, puis remonter seul ou utiliser Rentrer », à plusieurs endroits du pont | **attend ta validation du plan v3** |
+| 3 | **Faite** par `tools/construire_verger.lua`. Le sentier et le pont sont en Z = -15 (et non Z = 0), pour ne pas passer sous l'arbre en (230, 0). Contrôle : 216 pièces, 0 faute, 18 pentes dans le bon sens. **Rendu non vu** (captures blanches). Studio : île, pont, mer, sentier, arbres, buissons, bac. **Ajouts (consigne du 2026-10-04)** : du sable de remontée **à intervalles réguliers le long de tout le pont** (des deux côtés) ; test « tomber du pont, puis remonter seul ou utiliser Rentrer », à plusieurs endroits du pont | **attend ta validation du plan v3** |
 | 4 | `Recolte.luau` (points, repousse, bac, Rentrer, barrière) | après 3 |
 | 5 | Écran (barre, Cueillir, Rentrer, 🎵, explication de la règle E, tutoriel) | après 4 |
 | 6 | Mesures, `CLAUDE.md`, `IDEES.md`, `decor-carte.md` | après 5 |

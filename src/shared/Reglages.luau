@@ -228,6 +228,34 @@ Reglages.Hybride = {
 
 	DelaiEntreDemandes = 0.5, -- secondes minimum entre deux demandes d'un écran (anti-spam)
 
+	-- Les points de récolte du monde (Workspace/Monde/Iles/<Île>/Recolte). Chaque modèle a
+	-- l'attribut "Sorte" = une clé de cette liste. Repousse en secondes, PROPRE À CHAQUE JOUEUR.
+	Points = {
+		ArbreFraise = { Ingredient = "Fraise", GainMin = 5, GainMax = 9, Repousse = 60, Nom = "Fraisier" },
+		BuissonFraise = { Ingredient = "Fraise", GainMin = 2, GainMax = 3, Repousse = 45, Nom = "Buisson de fraises" },
+	},
+	PorteePrompt = 8, -- studs : distance à laquelle « Cueillir » apparaît
+	DistanceMax = 12, -- studs : le serveur refuse une récolte plus loin (portée + marge pour le décalage réseau)
+	DureeAppui = 0.25, -- secondes d'appui sur « Cueillir »
+	DelaiEntreRecoltes = 0.25, -- secondes minimum entre deux récoltes d'un joueur (anti-spam)
+
+	-- Les îles de récolte : Ouvert = false fermerait l'île (le serveur refuse les récoltes,
+	-- la barrière du pont devient solide pour ce joueur). Toutes ouvertes dans le prototype.
+	Quartiers = {
+		Verger = { Ouvert = true },
+	},
+
+	-- Le bac de dépôt de chaque usine : modèle ServerStorage/ModelesRecolte/<Modele>, posé à
+	-- cette position dans le repère de la parcelle (près de l'entrée, devant la zone 1)
+	Bac = { Modele = "BacDepot", Position = Vector3.new(-30, 0, -50) },
+
+	-- Bouton « Rentrer » : ramène le joueur à l'entrée de son usine, depuis n'importe où
+	Rentrer = {
+		Fondu = 0.35, -- secondes du court fondu à l'écran
+		Delai = 10, -- secondes minimum entre deux retours
+		DistanceMin = 60, -- studs : le bouton n'apparaît que plus loin que ça de l'entrée
+	},
+
 	-- Registre des multiplicateurs qui s'empilent sur le revenu (voir docs/design_hybride.md,
 	-- section d). Chaque nouveau multiplicateur = une ligne ici + le tableau de progression refait.
 	--   Machines (zone)    : jusqu'à ×10            — branché

@@ -120,6 +120,39 @@ refaire. Un doublon (statue + piédestal) fait pendant le travail est rangé dan
   `SurfaceAppearance`, textures, valeurs d'échelle d'avatar. Gardés (invisibles) : attaches,
   `WrapLayer`/`WrapTarget` (forme des sourcils).
 
+## Mode hybride : l'Île du Verger (ajoutée le 2026-10-04, branche `hybride`)
+
+**Construite par un script** : `tools/construire_verger.lua`, à coller dans la barre de commande de Studio (mode
+édition). Il peut être relancé : il range l'ancienne version dans `ServerStorage/Decor_Anciens` (avec la date dans
+le nom) et reconstruit tout. Contrôle en lecture seule : `tools/controler_verger.lua`. Plan : `docs/design_hybride.md`.
+
+**Rangé dans `ServerStorage/Decor_Anciens`** (rien n'est supprimé) : `MurEst` (mur invisible X = 264, 398 de long),
+et les 3 falaises de l'est `Falaise_277_0`, `Falaise_277_-56`, `Falaise_280_56`. Pour revenir en arrière : remettre
+`MurEst` dans `Workspace/Decor/1_SolEtBordure/Murs`, les 3 falaises dans `.../Falaises` (renommées `Falaise`), et
+ranger `Workspace/Monde`.
+
+**`Workspace/Monde`** (216 pièces, dont 58 sols et murs avec collision ; tout ancré, sans ombre) :
+- `MursCarte/MurEst_Sud` et `MurEst_Nord` : remplacent `MurEst`, avec une **ouverture de 14 studs en Z = -22 à -8** pour le pont.
+- `Iles/Verger` (attribut `Quartier = "Verger"`) :
+  - `Barriere` : Part invisible sans collision en (268, 5, -15), le verrou de l'île (rendu solide chez un joueur
+    seulement si l'île lui est fermée).
+  - `Sentier/SentierVersPont` : caramel `#E5B084`, 226 × 10, du bord de la place (X = 36) au bord de la carte
+    (X = 262), en **Z = -15** (et pas Z = 0 : il passerait sous l'arbre à barbe à papa en (230, 0)). Sans collision.
+  - `Pont` (Model, streaming `Persistent`) : 32 planches rose `#FF8FB8` / blanc, de X = 262 à 451,4, largeur 12,
+    dessus à Y = 0,2 (collision) ; 2 rambardes blanches et 18 poteaux roses **sans collision**.
+  - `Mer` (Model, `Persistent`) : `SurfaceEau` (1 100 × 1 000, `#7FD3EE`, transparence 0,2, dessus à Y = -1,
+    **sans collision**) ; `FondDeSable` (460 × 380, dessus à Y = -3,5, collision) ; 3 murs invisibles au large
+    (X = 712, Z = ±180, hauteur 80) ; **10 pentes de sable** le long du pont (X = 282, 320, 358, 396, 434, des deux côtés).
+  - `Ile` (Model, `Persistent`) : centre (530, 0), herbe Ø 160 (dessus Y = 0,05) + plage de sable Ø 172, 8 pentes de
+    sable autour (tous les 45°, à partir de 22,5°), sentier de l'île (150 × 8, caramel).
+  - `Recolte` : **18 points**, étiquette `PointRecolte`, attribut `Sorte` :
+    - 5 buissons le long du sentier (X = 70, 110, 150, 190, 230, en quinconce à Z = -23 / -7) ;
+    - 2 au bout du pont (458, -4 / -26) et 3 au bout de l'île (592, -4 / -26 et 603, -15) ;
+    - 8 arbres en 2 rangées (X = 486, 516, 546, 576 ; Z = -1 et -29).
+  - `Decor` : 3 sucettes et 4 champignons (copies de `ModelesDecor`), loin du sentier.
+- **`ServerStorage/ModelesRecolte`** : `ArbreFraise` (8 pièces), `BuissonFraise` (5), `BacDepot` (6, copié par le jeu
+  devant chaque usine). Règle de remplacement : voir `CLAUDE.md` (« Mode hybride »).
+
 ## Désactiver ou supprimer
 
 - Cacher tout le décor : déplacer `Workspace/Decor` dans `ServerStorage` (ou le supprimer).

@@ -373,6 +373,21 @@ rotation autour de la verticale seulement pour que le devant de la Base regarde 
   pas au premier plan, et le focus se perd souvent entre deux appels. Mesurer dans le même
   appel, juste après un lancement de partie, et se fier aussi à `Stats.RenderCPUFrameTime`.
 
+## Mode hybride (branche `hybride`)
+
+Plan complet, décisions et mesures : **`docs/design_hybride.md`** (v3.1). Liste à relire avant toute
+publication : **`docs/avant_publication.md`**. Interrupteur : `Reglages.HYBRIDE_ACTIF`.
+
+- **Seulement dans Studio** (ni Rojo ni Git) : `Workspace/Monde` (l'Île du Verger, son pont, la mer, les 2 morceaux
+  du mur est) et `ServerStorage/ModelesRecolte` (`ArbreFraise`, `BuissonFraise`, `BacDepot`). Rangés dans
+  `ServerStorage/Decor_Anciens` : `MurEst` et 3 falaises de l'est. **Reconstruction : `tools/construire_verger.lua`**
+  (barre de commande, mode édition ; relançable). Contrôle : `tools/controler_verger.lua`. Détail : `docs/decor-carte.md`.
+- **Remplacer un arbre ou un buisson par ses propres modèles** : un Model avec l'attribut `Sorte`
+  (`"ArbreFraise"` ou `"BuissonFraise"`, chiffres dans `Reglages.Hybride.Points`), PrimaryPart = une Part `Base` à plat
+  (bas de la Base = le sol), une Part `Prompt` (la distance est mesurée depuis elle), les fruits avec l'attribut
+  `Fruit = true` (cachés pendant la repousse), toutes les pièces ancrées et sans collision, `ModelStreamingMode = Atomic`,
+  étiquette `PointRecolte`. Les poser dans `Workspace/Monde/Iles/Verger/Recolte`.
+
 ## Ambiance (éclairage, ciel, brume)
 
 - **Tous les réglages sont dans `src/ambiance/`**, qui EST le service Lighting
