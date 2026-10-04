@@ -82,7 +82,7 @@ local function lireDonnees(joueur, usine)
 		table.insert(achats, objet.Name)
 	end
 
-	return {
+	local donnees = {
 		Argent = argent.Value,
 		Achats = achats,
 		Inventaire = inventaire.Inventaire,
@@ -92,6 +92,9 @@ local function lireDonnees(joueur, usine)
 		PitieSorciere = pitieSorciere,
 		Ingredients = ingredients,
 	}
+	-- Champs venant d'une version plus récente du jeu (retour en arrière) : remis tels quels
+	Sauvegarde.completer(joueur.UserId, donnees)
+	return donnees
 end
 
 -- Envoie les données au DataStore et affiche le résultat dans la sortie
@@ -101,7 +104,7 @@ local function enregistrer(joueur, donnees)
 	sauvegardesEnCours -= 1
 
 	if reussi then
-		print("Sauvegarde de " .. joueur.Name .. " : " .. donnees.Argent .. " $, " .. #donnees.Achats .. " achat(s)")
+		print("Sauvegarde de " .. joueur.Name .. " : " .. donnees.Argent .. " $, " .. #donnees.Achats .. " achat(s), dans le DataStore '" .. tostring(Sauvegarde.nomDataStore()) .. "'")
 	else
 		warn("Sauvegarde de " .. joueur.Name .. " impossible, ses derniers progrès sont perdus")
 	end
@@ -219,6 +222,7 @@ local function quandUnJoueurPart(joueur)
 	-- Si le serveur s'arrête, c'est la fonction d'arrêt (plus bas) qui sauvegarde
 	if not serveurEnArret then
 		sauvegarderJoueur(joueur) -- lit les données tout de suite, avant de détruire l'usine
+		Sauvegarde.oublier(joueur.UserId) -- la dernière sauvegarde est préparée : plus besoin des champs gardés
 	end
 
 	local usine = usines[joueur]

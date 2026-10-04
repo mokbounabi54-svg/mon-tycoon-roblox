@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
 local Remotes = require(script.Parent:WaitForChild("Remotes"))
+local PanneSimulee = require(script.Parent:WaitForChild("PanneSimulee"))
 
 local REGLAGES = Reglages.Hybride
 local INTERVALLE_ENVOI = 0.5 -- secondes minimum entre deux envois à l'écran (les mélangeurs consomment souvent)
@@ -132,6 +133,7 @@ end
 -- Prépare les ingrédients d'un joueur qui arrive, à partir de sa sauvegarde (donnees.Ingredients).
 -- Donne le cadeau de départ s'il ne l'a jamais reçu (seulement si le mode hybride est actif).
 function Ingredients.demarrer(joueur, donnees)
+	PanneSimulee.verifier("Ingredients") -- tests seulement (Studio) : simule un plantage ici
 	local corrections = {}
 	local propre = Ingredients.lireSauvegarde(donnees.Ingredients, corrections)
 	for _, correction in corrections do

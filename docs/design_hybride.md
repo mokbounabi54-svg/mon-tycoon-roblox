@@ -65,6 +65,57 @@ le jeu publié. Voici ce que je peux faire, du plus faible au plus fort :
 
 **Cette preuve est partielle** : elle vérifie la règle écrite dans le code, mais pas le comportement du vrai
 jeu publié (dans Studio, `RunService:IsStudio()` vaut toujours `true`).
+
+### Garde-fou de la branche (ajouté après l'étape 1)
+- **Dans Studio**, la sauvegarde utilisée par défaut est **`Test_Hybride`**.
+  La vraie (`Joueurs_v2`) ne sert que si `ServerStorage.UtiliserVraieSauvegarde = true` (un vrai booléen).
+  Un `warn` « ATTENTION : VRAIE sauvegarde » s'affiche alors.
+- Si `DataStoreTest` désigne `Joueurs_v2`, il faut aussi l'autorisation, sinon c'est `Test_Hybride`.
+- **Dans le jeu publié** : rien ne change, c'est toujours `Joueurs_v2`, et les attributs sont ignorés.
+- Testé : 14 cas sur 14 avec le faux « pas dans Studio » ; une partie de Studio démarre normalement.
+- **À décider à la fusion** : garder ou retirer ce comportement (constante `DATASTORE_STUDIO_PAR_DEFAUT`).
+
+### Retour en arrière vers la version 5 (testé dans `Test_Hybride`)
+1. Sauvegarde v6 → partie avec le code de `nuit-auto` (v5) → argent, achats, inventaire, seuil, carnet et les
+   deux pitiés **conservés**. Mais le code v5 **retire le champ `Ingredients`** et remet `Version = 5`.
+2. Retour au code v6 → la migration 5 → 6 recrée des ingrédients **vides**, avec `CadeauRecu = false`.
+   Le panier et le bac sont **perdus**, et le cadeau serait **redonné**. Mesuré : panier 12 + bac 37 → 0.
+
+### Le vrai retour en arrière : `HYBRIDE_ACTIF = false`
+**Pour revenir en arrière, on ne remet pas un ancien code : on passe `Reglages.HYBRIDE_ACTIF` à `false`.**
+Le jeu redevient celui d'avant (rythmes, prix, rien de plus à l'écran), et la sauvegarde garde ses ingrédients
+pour plus tard. `nuit-auto` n'est pas modifiée : remettre son code ferait perdre les ingrédients (voir ci-dessus).
+
+### Correctifs ajoutés avant l'étape 2 (testés dans `Test_Hybride`)
+- **Le DataStore est choisi UNE SEULE FOIS, au démarrage du serveur**, pour le chargement et toutes les sauvegardes.
+  - La sortie l'annonce : « DataStore choisi pour toute la partie : '…' ».
+  - Mesuré : `UtiliserVraieSauvegarde = true` et `DataStoreTest = "Test_Hybride_B"` posés **en pleine partie** →
+    la sauvegarde va quand même dans `Test_Hybride` ; `Test_Hybride_B` ne reçoit rien ; aucun avertissement « vraie sauvegarde ».
+- **Compatibilité avec une version plus récente** :
+  - la sauvegarde garde ses champs inconnus et ne baisse jamais son numéro de version ;
+  - mesuré : une sauvegarde v7 avec `Quartiers` et `ChampFutur` est rechargée puis réécrite en **v7**,
+    avec ses 2 champs intacts ;
+  - limite : un champ inconnu **à l'intérieur** d'un champ connu (par exemple un nouveau sous-champ de `Ingredients`) n'est pas gardé.
+- **Pannes simulées** : `server/PanneSimulee.luau`, attribut `SimulerPanne` = `Chargement`, `Sauvegarde` ou `Ingredients`.
+  **Seulement dans Studio** (vérifié avec un faux « pas dans Studio » : jamais actif).
+
+| Panne | Le joueur est-il sauvegardé ? | Perd-il sa progression ? | Message dans la sortie | Cadeau redonné à tort ? |
+|---|---|---|---|---|
+| Chargement (risque 9) | Non (voulu) | Celle de cette partie seulement ; l'ancienne sauvegarde est intacte | Oui : 3 essais ratés + « cette partie ne sera pas sauvegardée » | Non (pas de cadeau dans cette partie) |
+| Sauvegarde (risque 10) | Non (3 essais ratés) | **Oui, celle de la partie** (mesuré : +1 000 $ perdus) ; l'ancienne sauvegarde est intacte | Oui : « ses derniers progrès sont perdus » | Redonné à la partie suivante, **mais pas en double** : celui de la partie ratée est perdu avec elle |
+| Démarrage des ingrédients (risque 4) | Non | Celle de la partie (rien ne peut avancer) ; ancienne sauvegarde intacte | Oui : erreur avec la ligne exacte | Non |
+
+**Problème vu au test du risque 4** : le joueur reste bloqué au Départ, avec une usine posée dont **toutes les machines
+sont visibles mais rien ne tourne** (boutons et production jamais démarrés). **Correctif proposé (pas fait)** :
+démarrer chaque module du joueur dans un `pcall`. Si l'un plante, le joueur est quand même placé dans son usine,
+qui marche sans ce module ; il n'est pas sauvegardé ; un message doux s'affiche à l'écran.
+
+### Risques acceptés, à relire avant la publication
+- **Risque 5** : cadeau donné, puis sauvegarde ratée → cadeau redonné à la partie suivante (pas en double, voir ci-dessus).
+- **Risque 6** : le même joueur sur deux serveurs presque en même temps → le 2e charge une sauvegarde périmée
+  (il n'y a pas de verrou de session ; ce risque existait déjà avant le mode hybride).
+- **Risque 7** : deux écritures rapprochées sur la même case → Roblox les met en file d'attente (vu : jusqu'à 13 s de retard) ;
+  si le serveur s'éteint avant, l'écriture peut se perdre.
 >
 > **Légende des chiffres** : 🧮 = **calculé** (pas encore vérifié en jeu) · 📏 = **mesuré**.
 > Aujourd'hui, **tous les chiffres de ce plan sont 🧮 calculés.** Rien n'a encore été mesuré en jeu.

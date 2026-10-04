@@ -22,6 +22,11 @@
 -- "Version" indique le format de la sauvegarde. Quand le jeu change beaucoup,
 -- on augmente VERSION et on convertit les anciennes sauvegardes (voir migrer).
 --
+-- RETOUR EN ARRIÈRE : une sauvegarde venant d'une version PLUS RÉCENTE du jeu (par
+-- exemple 7) garde ses champs inconnus tels quels, et son numéro de version ne baisse
+-- jamais. Si on remet une ancienne version du jeu, on ne perd donc rien de ce qu'elle
+-- ne connaît pas (seulement au premier niveau de la sauvegarde : voir completer).
+--
 -- Parler au DataStore peut échouer (problème réseau, trop de demandes...).
 -- On utilise donc pcall pour attraper l'erreur au lieu de planter, et on
 -- réessaie plusieurs fois avant d'abandonner.
@@ -33,12 +38,20 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local Reglages = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reglages"))
 local ModeDebug = require(script.Parent:WaitForChild("ModeDebug"))
+local PanneSimulee = require(script.Parent:WaitForChild("PanneSimulee")) -- tests, seulement dans Studio
 
 local NOM_DATASTORE = "Joueurs_v2" -- changer ce nom repart de sauvegardes vides
 local NOMBRE_ESSAIS = 3
 local ATTENTE_ENTRE_ESSAIS = 2 -- secondes
 
 local VERSION = 6
+
+-- Les champs que cette version du jeu connaît. Les autres (venant d'une version plus
+-- récente) sont gardés de côté au chargement et remis à chaque sauvegarde.
+local CHAMPS_CONNUS = {
+	Version = true, Argent = true, Achats = true, Inventaire = true, SeuilGarde = true,
+	CompteurPitie = true, Carnet = true, PitieSorciere = true, Ingredients = true,
+}
 
 -- Version 1 : les 10 anciennes machines à bonbons, avec leur prix.
 -- Elles n'existent plus : on rembourse leur prix au joueur.
@@ -71,28 +84,43 @@ local function cle(userId)
 	return "joueur_" .. userId
 end
 
--- DataStore de test (SEULEMENT dans Studio, jamais dans le jeu publié) :
--- si ServerStorage a un attribut texte "DataStoreTest" (ex : "Test_Joueurs"),
--- toutes les lectures et écritures vont dans ce DataStore-là au lieu du vrai.
--- On peut ainsi tester sauvegarde, rechargement et migration sans toucher aux vraies parties.
--- Dans le jeu publié, RunService:IsStudio() vaut false : l'attribut est ignoré.
--- En mode debug (voir ModeDebug), c'est TOUJOURS le DataStore de test.
+-- GARDE-FOU DE LA BRANCHE « hybride » : dans Studio, tant que la branche n'est pas
+-- fusionnée, les parties utilisent PAR DÉFAUT ce DataStore de test. La vraie sauvegarde
+-- ne sert dans Studio que si ServerStorage a l'attribut UtiliserVraieSauvegarde = true.
+-- (À la fusion, décider avec l'utilisateur si on garde ce comportement.)
+local DATASTORE_STUDIO_PAR_DEFAUT = "Test_Hybride"
+
+-- Quel DataStore utiliser ?
+--   Jeu publié (pas dans Studio) : TOUJOURS le vrai (Joueurs_v2). Les attributs sont ignorés.
+--   Dans Studio, dans cet ordre :
+--     1. mode debug (voir ModeDebug)                    -> son DataStore de test
+--     2. attribut texte "DataStoreTest" (ex : "Test_X") -> ce DataStore de test
+--        (sauf s'il désigne le vrai : il faut alors aussi UtiliserVraieSauvegarde)
+--     3. attribut UtiliserVraieSauvegarde = true        -> le vrai DataStore
+--     4. sinon                                          -> DATASTORE_STUDIO_PAR_DEFAUT
 --
 -- La décision est dans une petite fonction à part, qui reçoit « est-on dans Studio ? »
--- en paramètre : on peut ainsi vérifier par un test que, HORS de Studio, l'attribut est
--- ignoré (dans Studio, RunService:IsStudio() répond toujours true).
+-- en paramètre : on peut ainsi vérifier par un test le comportement HORS de Studio
+-- (dans Studio, RunService:IsStudio() répond toujours true).
 -- Renvoie le nom du DataStore à utiliser (nil = aucun) et true si c'est un DataStore de test.
-function Sauvegarde.choisirNom(estStudio, nomTest, debugActif, nomDebug)
-	if debugActif then
-		nomTest = nomDebug
-	end
-	if estStudio and typeof(nomTest) == "string" and nomTest ~= "" then
-		return nomTest, true
+function Sauvegarde.choisirNom(estStudio, nomTest, debugActif, nomDebug, vraieSauvegardeDemandee)
+	if not estStudio then
+		return NOM_DATASTORE, false -- jeu publié : comportement inchangé
 	end
 	if debugActif then
+		if typeof(nomDebug) == "string" and nomDebug ~= "" then
+			return nomDebug, true
+		end
 		return nil, false -- ne devrait jamais arriver : en mode debug, on ne touche pas au vrai DataStore
 	end
-	return NOM_DATASTORE, false
+	local vraieDemandee = vraieSauvegardeDemandee == true
+	if typeof(nomTest) == "string" and nomTest ~= "" and (nomTest ~= NOM_DATASTORE or vraieDemandee) then
+		return nomTest, nomTest ~= NOM_DATASTORE
+	end
+	if vraieDemandee then
+		return NOM_DATASTORE, false
+	end
+	return DATASTORE_STUDIO_PAR_DEFAUT, true
 end
 
 -- Vrai si l'attribut DataStoreTest doit être signalé comme IGNORÉ (jeu publié, attribut posé).
@@ -101,21 +129,25 @@ function Sauvegarde.attributIgnore(estStudio, nomTest)
 	return not estStudio and nomTest ~= nil
 end
 
-local avertissementDonne = false -- le warn n'est affiché qu'une fois par serveur
-
--- Renvoie le DataStore et son nom.
-local function choisirDataStore()
+-- Calcule le DataStore à utiliser. Appelée UNE SEULE FOIS, au démarrage du serveur (plus bas) :
+-- le chargement ET toutes les sauvegardes de la partie utilisent ce choix. Changer un
+-- attribut pendant la partie ne change donc rien (sinon on pourrait charger une sauvegarde
+-- de test puis l'écrire dans la vraie). Renvoie le DataStore et son nom.
+local function calculerDataStore()
 	local estStudio = RunService:IsStudio()
 	local nomTest = ServerStorage:GetAttribute("DataStoreTest")
-	if Sauvegarde.attributIgnore(estStudio, nomTest) and not avertissementDonne then
-		avertissementDonne = true
+	if Sauvegarde.attributIgnore(estStudio, nomTest) then
 		warn("L'attribut DataStoreTest ('" .. tostring(nomTest) .. "') est posé sur ServerStorage, mais il est IGNORÉ hors de Studio : le vrai DataStore est utilisé. Retire-le du jeu.")
 	end
-	local nom, estTest = Sauvegarde.choisirNom(estStudio, nomTest, ModeDebug.actif, ModeDebug.nomDataStore)
+	local vraieDemandee = ServerStorage:GetAttribute("UtiliserVraieSauvegarde")
+	local nom, estTest = Sauvegarde.choisirNom(estStudio, nomTest, ModeDebug.actif, ModeDebug.nomDataStore, vraieDemandee)
 	if nom == nil then
 		return nil, nil
 	end
 	if not estTest then
+		if estStudio then
+			warn("ATTENTION : partie de Studio sur la VRAIE sauvegarde (" .. NOM_DATASTORE .. "), demandée par UtiliserVraieSauvegarde")
+		end
 		return dataStore, NOM_DATASTORE
 	end
 	local ok, storeTest = pcall(function()
@@ -126,6 +158,44 @@ local function choisirDataStore()
 	end
 	warn("DataStore de test '" .. nom .. "' indisponible : " .. tostring(storeTest))
 	return nil, nil
+end
+
+-- Le choix est fait ICI, une fois pour toutes, au démarrage du serveur
+local storeChoisi, nomChoisi = calculerDataStore()
+print("DataStore choisi pour toute la partie : '" .. tostring(nomChoisi) .. "'")
+
+local function choisirDataStore()
+	return storeChoisi, nomChoisi
+end
+
+-- Le nom du DataStore utilisé pendant cette partie (pour les messages de la sortie)
+function Sauvegarde.nomDataStore()
+	return nomChoisi
+end
+
+-- Champs inconnus gardés de côté, par joueur : gardes[userId] = { champs = {...}, version = n }
+local gardes = {}
+
+-- Remet dans "donnees" (une sauvegarde prête à être écrite) les champs inconnus lus au
+-- chargement, et le numéro de version le plus haut. À appeler AU MOMENT où on prépare la
+-- sauvegarde. Limite : un champ inconnu À L'INTÉRIEUR d'un champ connu (par exemple un
+-- nouveau sous-champ de Ingredients) n'est pas gardé.
+function Sauvegarde.completer(userId, donnees)
+	local garde = gardes[userId]
+	if garde == nil then
+		return
+	end
+	for nom, valeur in garde.champs do
+		if donnees[nom] == nil then
+			donnees[nom] = valeur
+		end
+	end
+	donnees.Version = math.max(VERSION, garde.version)
+end
+
+-- Le joueur est parti ET sa dernière sauvegarde a été préparée : on oublie ses champs gardés
+function Sauvegarde.oublier(userId)
+	gardes[userId] = nil
 end
 
 -- Appelle "action" jusqu'à NOMBRE_ESSAIS fois, tant qu'elle échoue.
@@ -200,7 +270,10 @@ function Sauvegarde.migrer(userId, donnees)
 		donnees.Ingredients = { Panier = {}, Reserve = {}, CadeauRecu = false }
 		print("Sauvegarde de " .. userId .. " convertie en version 6 (ingrédients)")
 	end
-	donnees.Version = VERSION
+	if version > VERSION then
+		print("Sauvegarde de " .. userId .. " : version " .. version .. ", plus récente que ce jeu (" .. VERSION .. ") ; ses champs inconnus sont gardés tels quels")
+	end
+	donnees.Version = math.max(VERSION, version) -- jamais plus bas que ce qu'on a lu
 end
 
 -- Charge la sauvegarde d'un joueur.
@@ -217,6 +290,7 @@ function Sauvegarde.charger(userId)
 	print("Chargement de " .. userId .. " depuis le DataStore '" .. nomStore .. "'")
 
 	local reussi, donnees = essayerPlusieursFois("Chargement de " .. userId, function()
+		PanneSimulee.verifier("Chargement")
 		return store:GetAsync(cle(userId))
 	end)
 	if not reussi then
@@ -234,6 +308,15 @@ function Sauvegarde.charger(userId)
 		donnees.Achats = {}
 	end
 	Sauvegarde.migrer(userId, donnees)
+
+	-- Champs inconnus (sauvegarde d'une version plus récente) : gardés de côté pour être réécrits
+	local champsInconnus = {}
+	for nom, valeur in donnees do
+		if not CHAMPS_CONNUS[nom] then
+			champsInconnus[nom] = valeur
+		end
+	end
+	gardes[userId] = { champs = champsInconnus, version = donnees.Version }
 
 	-- Les champs de la version 3 (le détail de chaque pile est vérifié par Inventaire)
 	if typeof(donnees.Inventaire) ~= "table" then
@@ -276,8 +359,10 @@ function Sauvegarde.enregistrer(userId, donnees)
 		return false
 	end
 
-	donnees.Version = VERSION
+	-- Jamais un numéro de version plus bas que celui posé par completer (retour en arrière)
+	donnees.Version = math.max(VERSION, if typeof(donnees.Version) == "number" then donnees.Version else 0)
 	local reussi = essayerPlusieursFois("Sauvegarde de " .. userId, function()
+		PanneSimulee.verifier("Sauvegarde")
 		store:SetAsync(cle(userId), donnees, { userId })
 	end)
 	return reussi

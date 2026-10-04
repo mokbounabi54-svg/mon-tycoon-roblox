@@ -1,5 +1,8 @@
 -- EXPORTER MA SAUVEGARDE (LECTURE SEULE)
 --
+-- Version lisible et commentée. Si la barre de commande refuse plusieurs lignes, utilise
+-- tools/exporter_sauvegarde_une_ligne.lua (même chose, en une seule ligne, sans commentaires).
+--
 -- À quoi ça sert : garder une copie texte de ta vraie sauvegarde (DataStore "Joueurs_v2")
 -- AVANT ta première partie normale avec le mode hybride (elle passera alors en version 6).
 --
