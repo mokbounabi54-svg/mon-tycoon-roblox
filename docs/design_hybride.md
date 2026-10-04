@@ -507,7 +507,7 @@ Reglages.Hybride = {
 |---|---|---|
 | 0 | Branche `hybride` depuis `nuit-auto` + plan v3.1 + `tools/exporter_sauvegarde.lua` | **faite** (`bcc82ec`) |
 | 1 | Réglages, `Ingredients.luau`, sauvegarde v6, cadeau, vérification | **faite, testée dans `Test_Hybride`, attend « commit »** |
-| 2 | Production 50 % / 200 % + règle E + `MultiplicateurPrix` (`Boutons.luau`) | autorisée, après le commit de l'étape 1 |
+| 2 | Production 50 % / 200 % + règle E + `MultiplicateurPrix` (`Boutons.luau`) | **faite** (mesures ci-dessous) |
 | 2b | **Tests de faisabilité de l'archipel** (b.1 à b.4 ci-dessous), objets temporaires dans `Workspace/TestHybride` | **pas dans le périmètre autorisé** : à confirmer plus tard |
 | 3 | Studio : île, pont, mer, sentier, arbres, buissons, bac. **Ajouts (consigne du 2026-10-04)** : du sable de remontée **à intervalles réguliers le long de tout le pont** (des deux côtés) ; test « tomber du pont, puis remonter seul ou utiliser Rentrer », à plusieurs endroits du pont | **attend ta validation du plan v3** |
 | 4 | `Recolte.luau` (points, repousse, bac, Rentrer, barrière) | après 3 |
@@ -541,6 +541,24 @@ Reglages.Hybride = {
     - 1A + 1B, bac à 90 → 1A servi d'abord ;
     - 80 bonbons atteints → aucune fraise consommée ;
     - panneaux des boutons à 1 800 / 6 300 / 18 000 seulement si hybride.
+
+### Mesures de l'étape 2 (usine du joueur de test, `Test_Hybride`, 120 s chronométrées depuis le démarrage)
+
+| Cas | Attendu 🧮 | Mesuré 📏 | Écart |
+|---|---|---|---|
+| HYBRIDE faux, 2 mélangeurs | 60 + 60 bonbons, 0 fraise | 60 + 60, 0 | 0 % |
+| HYBRIDE vrai, 1 mélangeur, bac à 200 | 120 bonbons, 120 fraises | 119, 119 | 0,8 % (le 1er tic arrive après 1 s) |
+| HYBRIDE vrai, 2 mélangeurs, bac vide | 30 + 60 | 29 + 59 | 3,3 % / 1,7 % |
+| HYBRIDE vrai, 2 mélangeurs, bac à 91 (règle E) | 64 + 82, 91 fraises ; la 91e fraise va au mélangeur 1 | 64 + 82, 91 ; au moment où le bac se vide : 46 contre 45 | 0 % |
+| Limite de 80 bonbons (80 faux bonbons ajoutés pendant 10 s) | 0 bonbon, 0 fraise | 0, 0 ; la production reprend ensuite | — |
+| Prix, mode éteint | inchangés | Zone2 à 10 000 (panneau), tous inchangés | — |
+| Prix, mode allumé | Cuiseur1 60, Mouleur1 250, Emballeuse1 1 800, Melangeur1B 6 300, Zone2 18 000, Cuiseur2 25 000 | identiques | — |
+
+Remarques :
+- Un 1er essai du test de la limite a échoué **à cause du test lui-même** : les vrais bonbons vendus ont fait
+  redescendre le total sous 80. Il a été refait avec 80 faux bonbons à eux seuls.
+- Les descriptions des boutons (par exemple « +2 $/s ») sont des attributs de `ModeleUsine`, dans Studio.
+  Elles ne tiennent pas compte du mode hybride.
 
 ### Garde-fous pour ta vraie sauvegarde (étapes 1 et 2)
 - Avant **chaque** lancement de partie, je vérifie par la connexion Studio que `ServerStorage.DataStoreTest = "Test_Hybride"`.

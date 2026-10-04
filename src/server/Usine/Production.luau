@@ -42,6 +42,7 @@ local Rarete = require(script.Parent:WaitForChild("Rarete"))
 local Prix = require(script.Parent:WaitForChild("Prix"))
 local Inventaire = require(script.Parent.Parent:WaitForChild("Inventaire"))
 local Carnet = require(script.Parent.Parent:WaitForChild("Carnet"))
+local Ingredients = require(script.Parent.Parent:WaitForChild("Ingredients")) -- le bac du mode hybride
 
 -- Les modèles des bonbons (créés dans Studio, pas dans les fichiers)
 local dossierModeles = ServerStorage:FindFirstChild("ModelesBonbons")
@@ -198,6 +199,88 @@ local function changerDeModele(usine, ancien, modele)
 	lancerPhysique(nouveau)
 end
 
+-- Compteurs (attributs) : bonbons créés par l'usine et par chaque mélangeur, fraises
+-- consommées. Ils servent aux mesures (tests, panneau de debug), pas au jeu.
+local function compter(objet, nom)
+	objet:SetAttribute(nom, (objet:GetAttribute(nom) or 0) + 1)
+end
+
+local function fabriquer(usine, dossierBonbons, melangeur)
+	creerBonbon(usine, dossierBonbons, melangeur.sortie, melangeur.valeur, melangeur.typeBonbon)
+	compter(usine, "BonbonsCrees")
+	compter(melangeur.machine, "BonbonsCrees")
+end
+
+--------------------------------------------------------------------------------
+-- MODE HYBRIDE : le « chef d'orchestre » des mélangeurs nourris par le bac
+--------------------------------------------------------------------------------
+-- Règle E (Reglages.Hybride.Melangeurs, voir docs/design_hybride.md) : à chaque « tic »
+-- (Intervalle / AvecFraises, donc 1 s pour un mélangeur de 2 s à ×2), chaque mélangeur,
+-- DANS L'ORDRE DE LA LISTE :
+--   - prend 1 fraise dans le bac s'il y en a, et fabrique 1 bonbon (rythme gourmand) ;
+--   - sinon, avance un compteur de SansFraises / AvecFraises, et fabrique 1 bonbon quand
+--     ce compteur atteint 1 (rythme tranquille, sans aucun hasard).
+-- Un seul chef par usine : tous ses mélangeurs font leur tic au même moment, donc le bac
+-- nourrit bien le 1er avant le 2e. Limite de bonbons atteinte : rien n'est fabriqué ET
+-- aucune fraise n'est consommée.
+
+local PAS_DU_CHEF = 0.1 -- secondes entre deux vérifications du chef
+
+local chefs = {} -- chefs[usine] = { melangeurs = { ... } }
+
+local function chefDe(usine, dossierBonbons)
+	local chef = chefs[usine]
+	if chef then
+		return chef
+	end
+	chef = { melangeurs = {} }
+	chefs[usine] = chef
+
+	task.spawn(function()
+		while usine.Parent ~= nil do
+			local ecoule = task.wait(PAS_DU_CHEF)
+			local proprietaire = Players:GetPlayerByUserId(usine:GetAttribute("Proprietaire") or 0)
+			for _, melangeur in chef.melangeurs do -- déjà rangés dans l'ordre de la règle E
+				if melangeur.machine.Parent == nil then
+					continue
+				end
+				melangeur.minuterie += ecoule
+				while melangeur.minuterie >= melangeur.tic do
+					melangeur.minuterie -= melangeur.tic
+					if #dossierBonbons:GetChildren() >= MAX_BONBONS_PAR_USINE then
+						continue -- trop de bonbons : on attend, sans consommer de fraise
+					end
+					if Ingredients.consommer(proprietaire, melangeur.config.Ingredient) then
+						compter(usine, "FraisesConsommees")
+						fabriquer(usine, dossierBonbons, melangeur)
+					else
+						melangeur.compteur += melangeur.config.SansFraises / melangeur.config.AvecFraises
+						if melangeur.compteur >= 1 then
+							melangeur.compteur -= 1
+							fabriquer(usine, dossierBonbons, melangeur)
+						end
+					end
+				end
+			end
+		end
+		chefs[usine] = nil
+	end)
+	return chef
+end
+
+-- La règle E de ce mélangeur (et son rang dans la liste), ou nil s'il n'est pas nourri par le bac
+local function regleHybride(machine)
+	if not Reglages.HYBRIDE_ACTIF then
+		return nil
+	end
+	for rang, config in Reglages.Hybride.Melangeurs do
+		if config.Nom == machine.Name then
+			return config, rang
+		end
+	end
+	return nil
+end
+
 local function demarrerMelangeur(usine, dossierBonbons, machine)
 	local sortie = trouverPiece(machine, "Sortie")
 	if sortie == nil then
@@ -210,14 +293,31 @@ local function demarrerMelangeur(usine, dossierBonbons, machine)
 		warn("Le mélangeur '" .. machine.Name .. "' n'a pas de TypeBonbon connu (voir Reglages.Types) : il ne produit rien")
 		return
 	end
-	local valeur = infosType.ValeurDepart
+	local melangeur = { machine = machine, sortie = sortie, typeBonbon = typeBonbon, valeur = infosType.ValeurDepart }
+
+	-- Mode hybride : ce mélangeur est confié au chef d'orchestre de l'usine
+	local config, rang = regleHybride(machine)
+	if config then
+		local chef = chefDe(usine, dossierBonbons)
+		melangeur.config = config
+		melangeur.rang = rang
+		melangeur.tic = intervalle / config.AvecFraises
+		melangeur.compteur = 0
+		-- Même « phase » que les mélangeurs déjà là : tous font leur tic au même moment
+		melangeur.minuterie = if chef.melangeurs[1] then chef.melangeurs[1].minuterie else 0
+		table.insert(chef.melangeurs, melangeur)
+		table.sort(chef.melangeurs, function(a, b)
+			return a.rang < b.rang
+		end)
+		return
+	end
 
 	-- task.spawn lance la boucle à côté, sans bloquer le reste du script.
 	-- Elle s'arrête quand la machine est détruite (avec l'usine).
 	task.spawn(function()
 		while machine.Parent ~= nil do
 			if #dossierBonbons:GetChildren() < MAX_BONBONS_PAR_USINE then
-				creerBonbon(usine, dossierBonbons, sortie, valeur, typeBonbon)
+				fabriquer(usine, dossierBonbons, melangeur)
 			end
 			task.wait(intervalle)
 		end
@@ -330,6 +430,7 @@ return function(usine)
 	local dossierBonbons = Instance.new("Folder")
 	dossierBonbons.Name = "Bonbons"
 	dossierBonbons.Parent = usine
+	usine:SetAttribute("DebutProduction", os.clock()) -- pour les mesures (bonbons par minute...)
 
 	local demarrerMachine -- déclarée avant pour pouvoir s'appeler elle-même (groupes de machines)
 	function demarrerMachine(machine)

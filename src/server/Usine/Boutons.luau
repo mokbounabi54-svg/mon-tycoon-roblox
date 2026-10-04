@@ -23,6 +23,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Format = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Format"))
+local Prix = require(script.Parent:WaitForChild("Prix")) -- prix des achats (mode hybride : MultiplicateurPrix)
 
 local COULEUR_PAS_ASSEZ = Color3.fromRGB(255, 80, 80) -- clignotement si pas assez d'argent
 
@@ -134,6 +135,7 @@ return function(usine, proprietaire, achatsDejaFaits)
 			warn("Le bouton '" .. bouton.Name .. "' n'a pas d'attribut Prix (nombre) : ignoré")
 			continue
 		end
+		prix = Prix.achat(bouton.Name, prix) -- inchangé hors du mode hybride
 
 		local objet = objetsCaches[bouton.Name]
 		if objet == nil then

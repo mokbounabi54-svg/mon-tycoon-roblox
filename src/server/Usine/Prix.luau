@@ -42,4 +42,16 @@ function Prix.calculer(usine, typeBonbon, nomRarete, mutation)
 	return math.floor(valeur + 0.5) -- arrondi au $ près
 end
 
+-- Le prix d'un ACHAT (bouton), à partir de son attribut "Prix". En mode hybride
+-- (Reglages.HYBRIDE_ACTIF), il est multiplié par Reglages.Hybride.MultiplicateurPrix[nom]
+-- (×1 si l'achat n'est pas dans la liste), arrondi au $. Sinon, il ne change pas.
+-- Le prix affiché sur le panneau et le prix payé viennent tous les deux d'ici.
+function Prix.achat(nomAchat, prixDeBase)
+	if not Reglages.HYBRIDE_ACTIF then
+		return prixDeBase
+	end
+	local multiplicateur = Reglages.Hybride.MultiplicateurPrix[nomAchat] or 1
+	return math.floor(prixDeBase * multiplicateur + 0.5)
+end
+
 return Prix
