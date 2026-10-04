@@ -105,10 +105,18 @@ pour plus tard. `nuit-auto` n'est pas modifiée : remettre son code ferait perdr
 | Sauvegarde (risque 10) | Non (3 essais ratés) | **Oui, celle de la partie** (mesuré : +1 000 $ perdus) ; l'ancienne sauvegarde est intacte | Oui : « ses derniers progrès sont perdus » | Redonné à la partie suivante, **mais pas en double** : celui de la partie ratée est perdu avec elle |
 | Démarrage des ingrédients (risque 4) | Non | Celle de la partie (rien ne peut avancer) ; ancienne sauvegarde intacte | Oui : erreur avec la ligne exacte | Non |
 
-**Problème vu au test du risque 4** : le joueur reste bloqué au Départ, avec une usine posée dont **toutes les machines
-sont visibles mais rien ne tourne** (boutons et production jamais démarrés). **Correctif proposé (pas fait)** :
-démarrer chaque module du joueur dans un `pcall`. Si l'un plante, le joueur est quand même placé dans son usine,
-qui marche sans ce module ; il n'est pas sauvegardé ; un message doux s'affiche à l'écran.
+**Problème vu au test du risque 4** : le joueur restait bloqué au Départ, avec une usine posée dont **toutes les
+machines étaient visibles mais rien ne tournait**. **Corrigé** :
+- `Parcelles` place d'abord le joueur dans son usine, puis démarre chaque partie séparément (`demarrerProtege`, avec `pcall`).
+- Si l'une plante, le reste marche, le joueur n'est **pas sauvegardé** pendant cette partie, et l'attribut
+  `PartieNonSauvegardee` (« Probleme » ou « Chargement ») prévient son écran.
+- `client/AvisSauvegarde.luau` affiche un panneau doux et honnête (« ce que tu fais pendant cette partie ne sera pas
+  enregistré », « reconnecte-toi »), puis un petit rappel discret en haut à droite.
+- Testé (pannes « Ingredients » et « Chargement ») :
+  - joueur à 0,4 stud de l'entrée de son usine ;
+  - production qui tourne (bonbons vendus, caisse à 96 $ et à 24 $) ;
+  - sauvegarde de test non écrasée ;
+  - aucun message dans une partie normale.
 
 ### Risques acceptés, à relire avant la publication
 - **Risque 5** : cadeau donné, puis sauvegarde ratée → cadeau redonné à la partie suivante (pas en double, voir ci-dessus).

@@ -157,6 +157,29 @@ local function teleporterDansUsine(joueur, personnage)
 	personnage:PivotTo(usine.Apparition.CFrame)
 end
 
+-- Lance une partie du démarrage d'un joueur (inventaire, carnet, production...) en la
+-- protégeant : si elle plante, l'erreur est affichée dans la sortie, mais le reste du
+-- démarrage continue (le joueur arrive quand même dans une usine qui marche).
+-- Renvoie true si tout s'est bien passé, puis ce que la fonction renvoie.
+local function demarrerProtege(joueur, nom, fonction, ...)
+	local resultat = table.pack(pcall(fonction, ...))
+	if not resultat[1] then
+		warn("Démarrage de '" .. nom .. "' pour " .. joueur.Name .. " raté : " .. tostring(resultat[2]))
+		return false
+	end
+	return true, table.unpack(resultat, 2, resultat.n)
+end
+
+-- Cette partie du joueur ne sera pas enregistrée. On le dit à son écran (attribut lu par
+-- client/AvisSauvegarde) : "Chargement" = sa sauvegarde n'a pas pu être lue ;
+-- "Probleme" = une partie du démarrage a planté.
+local function nePlusSauvegarder(joueur, raison)
+	peutSauvegarder[joueur] = false
+	if joueur:GetAttribute("PartieNonSauvegardee") == nil then
+		joueur:SetAttribute("PartieNonSauvegardee", raison)
+	end
+end
+
 local function quandUnJoueurArrive(joueur)
 	-- Le chargement peut prendre un peu de temps (on attend la réponse de Roblox)
 	local reussi, donnees = Sauvegarde.charger(joueur.UserId)
@@ -199,23 +222,42 @@ local function quandUnJoueurArrive(joueur)
 	usine.Parent = dossierParcelles
 	usines[joueur] = usine
 	peutSauvegarder[joueur] = reussi
+	if not reussi then
+		nePlusSauvegarder(joueur, "Chargement")
+	end
 
-	ajouterPanneauProprietaire(usine, joueur)
-	Inventaire.demarrer(joueur, usine, donnees) -- avant la production : le point de vente s'en sert
-	Carnet.demarrer(joueur, donnees) -- avant la production : les mélangeurs s'en servent
-	Ingredients.demarrer(joueur, donnees) -- avant la production : les mélangeurs du mode hybride s'en servent
-	Sorciere.demarrer(joueur, usine, donnees) -- pose la sorcière près de l'entrée
-	demarrerCaisse(usine, joueur)
-	demarrerProduction(usine) -- avant les boutons, pour démarrer aussi les achats restaurés
-	local acheterSansPayer = demarrerBoutons(usine, joueur, donnees.Achats)
-	PanneauDebug.brancher(joueur, acheterSansPayer) -- ne fait rien hors de Studio
-
+	-- Le joueur est placé dans son usine AVANT le reste : même si une partie du démarrage
+	-- plante, il n'est jamais bloqué au point de départ.
 	joueur.CharacterAdded:Connect(function(personnage)
 		teleporterDansUsine(joueur, personnage)
 	end)
 	if joueur.Character then
 		task.spawn(teleporterDansUsine, joueur, joueur.Character)
 	end
+
+	-- Chaque partie démarre séparément (demarrerProtege). Si l'une plante, le reste marche
+	-- quand même, mais la partie n'est PAS sauvegardée : on n'écrit jamais une sauvegarde
+	-- à laquelle il manquerait quelque chose.
+	local etapes = {
+		{ "Panneau", ajouterPanneauProprietaire, usine, joueur },
+		{ "Inventaire", Inventaire.demarrer, joueur, usine, donnees }, -- avant la production : le point de vente s'en sert
+		{ "Carnet", Carnet.demarrer, joueur, donnees }, -- avant la production : les mélangeurs s'en servent
+		{ "Ingredients", Ingredients.demarrer, joueur, donnees }, -- avant la production (mode hybride)
+		{ "Sorciere", Sorciere.demarrer, joueur, usine, donnees }, -- pose la sorcière près de l'entrée
+		{ "Caisse", demarrerCaisse, usine, joueur },
+		{ "Production", demarrerProduction, usine }, -- avant les boutons, pour démarrer aussi les achats restaurés
+	}
+	for _, etape in etapes do
+		-- etape = { nom, fonction, puis ce qu'on donne à la fonction }
+		if not demarrerProtege(joueur, etape[1], etape[2], table.unpack(etape, 3)) then
+			nePlusSauvegarder(joueur, "Probleme")
+		end
+	end
+	local boutonsOk, acheterSansPayer = demarrerProtege(joueur, "Boutons", demarrerBoutons, usine, joueur, donnees.Achats)
+	if not boutonsOk then
+		nePlusSauvegarder(joueur, "Probleme")
+	end
+	PanneauDebug.brancher(joueur, acheterSansPayer) -- ne fait rien hors de Studio
 end
 
 local function quandUnJoueurPart(joueur)
